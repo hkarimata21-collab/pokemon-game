@@ -1,4 +1,4 @@
-// ====================
+﻿// ====================
 // ポケモンデータ
 // ====================
 
@@ -233,529 +233,471 @@ let currentPokemon = null;
 let currentAnswer = 0;
 let catchCount = 0;
 let hintUsed = false;
-
 let currentA = 0;
 let currentB = 0;
+let activeSticker = null;
+let stickerOffsetX = 0;
+let stickerOffsetY = 0;
 
 const correctSound = new Audio("correct.mp3");
 const wrongSound = new Audio("wrong.mp3");
 
-// ====================
-// 初期化
-// ====================
+const areaData = {
+  math: {
+    kicker: "🏠 さんすう広場",
+    title: "さんすう広場",
+    items: [
+      { label: "足し算", action: "startAdditionGame()" },
+      { label: "引き算", action: "showComingSoon('引き算')" }
+    ]
+  },
+  word: {
+    kicker: "📚 ことば広場",
+    title: "ことば広場",
+    items: [
+      { label: "ひらがな", action: "showComingSoon('ひらがな')" },
+      { label: "カタカナ", action: "showComingSoon('カタカナ')" },
+      { label: "漢字", action: "showComingSoon('漢字')" }
+    ]
+  },
+  pretend: {
+    kicker: "🎨 おままごと広場",
+    title: "ステッカー遊び",
+    items: [
+      { label: "ステッカー遊び", action: "openStickerPlay()" }
+    ]
+  },
+  dex: {
+    kicker: "📖 ポケモン図鑑",
+    title: "ポケモン図鑑",
+    items: []
+  },
+  gift: {
+    kicker: "🎁 プレゼント広場",
+    title: "プレゼント広場",
+    items: [
+      { label: "ごほうびを見る", action: "showRewards()" }
+    ]
+  }
+};
 
 window.addEventListener("load", () => {
-  loadPokemon();
+  goHome();
 });
-
-// ====================
-// 画像URL生成
-// ====================
 
 function getPokemonImage(id) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 }
 
 function playCry(id) {
-
-  const cry =
-    new Audio(
-      `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`
-    );
-
+  const cry = new Audio(`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`);
   cry.volume = 1.0;
-
-  cry.addEventListener("canplaythrough", () => {
-    console.log("読み込み成功");
-  });
-
-  cry.addEventListener("error", (e) => {
-    console.log("音声エラー", e);
-  });
-
-  cry.play()
-    .then(() => console.log("再生成功"))
-    .catch(err => console.log("再生失敗", err));
-
+  cry.play().catch(() => {});
 }
 
-function playSound(file, speed = 1){
-
+function playSound(file, speed = 1) {
   const sound = new Audio(file);
-
   sound.volume = 1.0;
   sound.playbackRate = speed;
-
   sound.play().catch(() => {});
-
 }
 
-// ====================
-// ランダムポケモン
-// ====================
+function hideAllPanels() {
+  areaMenu.classList.add("hidden");
+  placeholderPanel.classList.add("hidden");
+  stickerArea.classList.add("hidden");
+  gameScreen.classList.add("hidden");
+  dexPanel.classList.add("hidden");
+}
+
+function goHome() {
+  townScreen.classList.remove("hidden");
+  areaScreen.classList.add("hidden");
+  catchEffect.classList.remove("catch-show");
+  renderHomeDex();
+}
+
+function openArea(areaName) {
+  const area = areaData[areaName];
+  townScreen.classList.add("hidden");
+  areaScreen.classList.remove("hidden");
+  areaKicker.textContent = area.kicker;
+  areaTitle.textContent = area.title;
+  hideAllPanels();
+
+  if (areaName === "dex") {
+    openDexPanel();
+    return;
+  }
+
+  areaMenu.innerHTML = area.items.map(item => `
+    <button class="menuCard" onclick="${item.action}">
+      ${item.label}
+    </button>
+  `).join("");
+
+  areaMenu.classList.remove("hidden");
+
+  if (areaName === "pretend") {
+    openStickerPlay();
+  }
+}
+
+function showComingSoon(name) {
+  hideAllPanels();
+  areaMenu.classList.remove("hidden");
+  placeholderPanel.innerHTML = `
+    <h2>${name}</h2>
+    <p>ここには、あとで ${name} のクイズを入れられます。</p>
+  `;
+  placeholderPanel.classList.remove("hidden");
+}
+
+function showRewards() {
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const count = dex.length;
+  const reward = count >= 20 ? "金のスター" : count >= 10 ? "銀のスター" : count >= 3 ? "銅のスター" : "はじめてバッジ";
+  hideAllPanels();
+  areaMenu.classList.remove("hidden");
+  placeholderPanel.innerHTML = `
+    <h2>🎁 ${reward}</h2>
+    <p>いままでに ${count} ひきのポケモンをゲットしたよ。</p>
+  `;
+  placeholderPanel.classList.remove("hidden");
+}
+
+const itemStickers = ["⭐", "🍎", "🍰", "🍩", "🍦", "🧃", "🧸", "🎀", "🛋️", "🪑", "🪴", "📚", "⚽", "🎈", "☂️", "🧺"];
+
+function openStickerPlay() {
+  hideAllPanels();
+  areaMenu.classList.remove("hidden");
+  stickerArea.classList.remove("hidden");
+  renderStickerChoices();
+  const savedBackground = localStorage.getItem("stickerBackground") || "room";
+  setStickerBackground(savedBackground);
+}
+
+function renderStickerChoices() {
+  renderPokemonStickerChoices();
+  itemStickerTray.innerHTML = itemStickers.map(item => `
+    <button class="stickerChoice" onclick="addItemSticker('${item}')" aria-label="${item}">
+      ${item}
+    </button>
+  `).join("");
+}
+
+function renderPokemonStickerChoices() {
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const ownedPokemon = dex
+    .map(no => pokemonList.find(p => p.dexNo === no))
+    .filter(Boolean);
+
+  if (ownedPokemon.length === 0) {
+    pokemonStickerTray.innerHTML = `
+      <div class="emptyStickerMessage">
+        足し算でポケモンをゲットすると、ここにステッカーがふえるよ。
+      </div>
+    `;
+    return;
+  }
+
+  pokemonStickerTray.innerHTML = ownedPokemon.map(p => `
+    <button class="stickerChoice" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
+      <img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">
+    </button>
+  `).join("");
+}
+
+function setStickerBackground(name) {
+  stickerBoard.classList.remove("boardRoom", "boardBeach", "boardPark", "boardNight");
+  stickerBoard.classList.add(`board${name.charAt(0).toUpperCase()}${name.slice(1)}`);
+  localStorage.setItem("stickerBackground", name);
+}
+
+function addSticker(mark) {
+  addItemSticker(mark);
+}
+
+function addItemSticker(mark) {
+  createSticker({ type: "item", content: mark });
+}
+
+function addPokemonSticker(dexNo) {
+  const p = pokemonList.find(x => x.dexNo === dexNo);
+  if (!p) return;
+  createSticker({
+    type: "pokemon",
+    content: getPokemonImage(p.pokemonId),
+    label: p.name
+  });
+}
+
+function createSticker(stickerData) {
+  const sticker = document.createElement("button");
+  sticker.className = `sticker ${stickerData.type === "item" ? "itemSticker" : "pokemonSticker"}`;
+  sticker.type = "button";
+  sticker.style.left = `${18 + Math.random() * 52}%`;
+  sticker.style.top = `${18 + Math.random() * 52}%`;
+
+  if (stickerData.type === "pokemon") {
+    sticker.innerHTML = `<img src="${stickerData.content}" alt="${stickerData.label || "ポケモン"}">`;
+  } else {
+    sticker.textContent = stickerData.content;
+  }
+
+  stickerBoard.appendChild(sticker);
+}
+
+function clearStickers() {
+  stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.remove());
+}
+
+stickerBoard.addEventListener("pointerdown", (event) => {
+  const sticker = event.target.closest(".sticker");
+  if (!sticker) return;
+  activeSticker = sticker;
+  const rect = sticker.getBoundingClientRect();
+  stickerOffsetX = event.clientX - rect.left;
+  stickerOffsetY = event.clientY - rect.top;
+  sticker.setPointerCapture(event.pointerId);
+});
+
+stickerBoard.addEventListener("pointermove", (event) => {
+  if (!activeSticker) return;
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const x = event.clientX - boardRect.left - stickerOffsetX;
+  const y = event.clientY - boardRect.top - stickerOffsetY;
+  activeSticker.style.left = `${Math.max(0, Math.min(x, boardRect.width - activeSticker.offsetWidth))}px`;
+  activeSticker.style.top = `${Math.max(0, Math.min(y, boardRect.height - activeSticker.offsetHeight))}px`;
+});
+
+stickerBoard.addEventListener("pointerup", () => {
+  activeSticker = null;
+});
+
+function startAdditionGame() {
+  hideAllPanels();
+  gameScreen.classList.remove("hidden");
+  catchCount = 0;
+  loadPokemon();
+}
 
 function getRandomPokemon() {
-  return pokemonList[
-    Math.floor(Math.random() * pokemonList.length)
-  ];
+  return pokemonList[Math.floor(Math.random() * pokemonList.length)];
 }
 
-// ====================
-// 問題生成
-// ====================
-
 function createQuestion() {
-
-  if(!hintUsed){
-
-    currentA =
-      Math.floor(Math.random() * 10) + 1;
-
-    currentB =
-      Math.floor(Math.random() * 10) + 1;
-
+  if (!hintUsed) {
+    currentA = Math.floor(Math.random() * 10) + 1;
+    currentB = Math.floor(Math.random() * 10) + 1;
   }
 
   const a = currentA;
   const b = currentB;
-
   currentAnswer = a + b;
-
-  question.textContent =
-    `${a} + ${b} = ?`;
+  question.textContent = `${a} + ${b} = ?`;
 
   const maxCount = Math.max(a, b);
+  const availableWidth = Math.min(window.innerWidth * 0.42, 260);
+  let pokemonSize = Math.floor(availableWidth / Math.min(maxCount, 5));
+  pokemonSize = Math.max(24, Math.min(60, pokemonSize));
+  const img = getPokemonImage(currentPokemon.pokemonId);
 
-  const availableWidth =
-    window.innerWidth * 0.45;
-
-  let pokemonSize =
-    Math.floor(
-      availableWidth /
-      Math.min(maxCount, 5)
-    );
-
-  pokemonSize =
-    Math.max(24, pokemonSize);
-
-  pokemonSize =
-    Math.min(60, pokemonSize);
-
-  const img =
-    getPokemonImage(
-      currentPokemon.pokemonId
-    );
-
-  function makeGroup(count){
-
-    let html =
-      '<div class="numberGroup">';
-
-    for(
-      let row = 0;
-      row < Math.ceil(count / 5);
-      row++
-    ){
-
-      html +=
-        '<div class="numberRow">';
-
+  function makeGroup(count) {
+    let html = '<div class="numberGroup">';
+    for (let row = 0; row < Math.ceil(count / 5); row++) {
+      html += '<div class="numberRow">';
       const start = row * 5;
-      const end =
-        Math.min(start + 5, count);
-
-      for(
-        let i = start;
-        i < end;
-        i++
-      ){
-
-        html += `
-          <img
-            src="${img}"
-            style="
-              width:${pokemonSize}px;
-              height:${pokemonSize}px;
-            "
-          >
-        `;
+      const end = Math.min(start + 5, count);
+      for (let i = start; i < end; i++) {
+        html += `<img src="${img}" alt="" style="width:${pokemonSize}px;height:${pokemonSize}px;">`;
       }
-
-      html += '</div>';
+      html += "</div>";
     }
-
-    html += '</div>';
-
+    html += "</div>";
     return html;
   }
 
-  if(hintUsed){
-
-    visualQuestion.innerHTML = `
-      ${makeGroup(a)}
-      <div class="plusSign">＋</div>
-      ${makeGroup(b)}
-    `;
-
-  }else{
-
-    visualQuestion.innerHTML = "";
-
-  }
+  visualQuestion.innerHTML = hintUsed ? `${makeGroup(a)}<div class="plusSign">＋</div>${makeGroup(b)}` : "";
 }
 
-function showHint(){
-
+function showHint() {
   hintUsed = true;
-
-  hintButton.style.display =
-    "none";
-
+  hintButton.style.display = "none";
   createQuestion();
-
 }
-// ====================
-// ポケモン出現
-// ====================
 
 function loadPokemon() {
-
-  ballImg.classList.remove("throw");
-
+  ballImg.classList.remove("throw", "shake-3");
   ballImg.style.display = "none";
-
   pokemonImage.style.display = "block";
+  catchEffect.classList.remove("catch-show");
+  catchEffect.style.display = "none";
 
   currentPokemon = getRandomPokemon();
-
-  pokemonName.textContent =
-    currentPokemon.name;
-
-pokemonImage.src =
-  getPokemonImage(
-    currentPokemon.pokemonId
-  );
-
-setTimeout(() => {
-  playCry(currentPokemon.pokemonId);
-}, 300);
+  pokemonName.textContent = currentPokemon.name;
+  pokemonImage.src = getPokemonImage(currentPokemon.pokemonId);
+  setTimeout(() => playCry(currentPokemon.pokemonId), 300);
 
   answerInput.value = "";
-
   questionArea.classList.remove("hidden");
   catchArea.classList.add("hidden");
   nextArea.classList.add("hidden");
-
-  message.textContent =
-    `${currentPokemon.name}が あらわれた！`;
-    
-hintUsed = false;
-
-hintButton.style.display =
-
-  "inline-block";
-
-createQuestion();
-
+  message.textContent = `${currentPokemon.name}が あらわれた！`;
+  hintUsed = false;
+  hintButton.style.display = "inline-block";
+  createQuestion();
 }
 
 function changePokemon() {
-
   catchCount = 0;
-
   loadPokemon();
-
-  playCry(currentPokemon.pokemonId);
-
 }
 
-// ====================
-// 回答判定
-// ====================
-
 function checkAnswer() {
-
   const value = answerInput.value.trim();
-
   if (value === "") return;
 
   if (Number(value) === currentAnswer) {
-    
     correctSound.currentTime = 0;
-    correctSound.play();
-    
+    correctSound.play().catch(() => {});
     questionArea.classList.add("hidden");
-
     catchArea.classList.remove("hidden");
-
     message.textContent = "せいかい！";
-
   } else {
     wrongSound.currentTime = 0;
-    wrongSound.play();
-    
-    // ❌不正解 →ボール出さない
+    wrongSound.play().catch(() => {});
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
-
     message.textContent = "おしい！もういちどがんばれ！";
   }
 }
 
-// ====================
-// ボール投擲
-// ====================
-
 function throwBall() {
-
   message.textContent = "";
-
-  playSound("throw.mp3",2.0);
-
+  playSound("throw.mp3", 2.0);
   ballImg.style.display = "block";
-
-  // throwアニメーションリセット
-  ballImg.classList.remove("throw");
-  ballImg.classList.remove("shake-3");
-
-  // 再描画リセット（超重要）
+  ballImg.classList.remove("throw", "shake-3");
   void ballImg.offsetWidth;
-
-  // 投げるアニメーション
   ballImg.classList.add("throw");
 
-  // ★着地後に3回揺れ
   setTimeout(() => {
-    playSound("shake.mp3",1.2);
-
-  setTimeout(() => {
-    playSound("shake.mp3",1.2);
-  }, 1000);
-  
-  setTimeout(() => {
-    playSound("shake.mp3",1.2);
-  }, 2000);
-  
+    playSound("shake.mp3", 1.2);
+    setTimeout(() => playSound("shake.mp3", 1.2), 1000);
+    setTimeout(() => playSound("shake.mp3", 1.2), 2000);
     ballImg.classList.add("shake-3");
-
   }, 1000);
 
-  // ポケモン非表示
   setTimeout(() => {
     pokemonImage.style.display = "none";
   }, 1000);
 
-  // 捕獲判定
   setTimeout(() => {
     catchPokemon();
   }, 4100);
 }
 
 function nextPokemon() {
-
-  catchEffect.classList.remove("catch-show");
-  catchEffect.style.display = "none";
-
   loadPokemon();
-
-  playCry(currentPokemon.pokemonId);
-
   ballImg.style.display = "none";
-  ballImg.classList.remove("shake-3");
-  ballImg.classList.remove("throw");
-
+  ballImg.classList.remove("shake-3", "throw");
   catchArea.classList.add("hidden");
   nextArea.classList.add("hidden");
 }
-
-// ====================
-// 捕獲判定
-// ====================
 
 function catchPokemon() {
-
   catchCount++;
+  const success = catchCount >= 3 || Math.random() * 100 < catchCount * 33.3333;
 
-  let success = false;
-
-  if (catchCount >= 3) {
-    success = true;
+  if (success) {
+    playSound("catch.mp3");
+    savePokemon();
+    catchCount = 0;
+    catchEffect.classList.remove("catch-show");
+    void catchEffect.offsetWidth;
+    catchEffect.classList.add("catch-show");
+    setTimeout(() => playSound("get.mp3"), 500);
+    message.textContent = "";
+    questionArea.classList.add("hidden");
+    catchArea.classList.add("hidden");
+    nextArea.classList.remove("hidden");
   } else {
-    success = Math.random() * 100 < catchCount * 33.3333;
-  }
-
-if (success) {
-  
-  playSound("catch.mp3");
-  
-  savePokemon();
-
-  catchCount = 0;
-
-  catchEffect.classList.remove("catch-show");
-
-  void catchEffect.offsetWidth;
-
-  catchEffect.classList.add("catch-show");
-
-  setTimeout(() => {
-  
-    playSound("get.mp3");
-  
-  }, 500);
-
-  message.textContent = "";
-
-  questionArea.classList.add("hidden");
-
-  catchArea.classList.add("hidden");
-
-  nextArea.classList.remove("hidden");
-
-} else {
-  playSound("escape.mp3",2.5);
-  
-  ballImg.style.display = "none";
-
-  pokemonImage.style.display = "block";
-
-  message.textContent = "おしい！もういちどがんばれ！";
-
-  // ★ここ追加（重要）
-  catchArea.classList.remove("hidden");
-
-  nextArea.classList.add("hidden");
+    playSound("escape.mp3", 2.5);
+    ballImg.style.display = "none";
+    pokemonImage.style.display = "block";
+    message.textContent = "おしい！もういちどがんばれ！";
+    catchArea.classList.remove("hidden");
+    nextArea.classList.add("hidden");
   }
 }
-
-// ====================
-// 図鑑保存
-// ====================
 
 function savePokemon() {
-
-  const dex =
-    JSON.parse(
-      localStorage.getItem("dex") || "[]"
-    );
-
-  if (
-    !dex.includes(
-      currentPokemon.dexNo
-    )
-  ) {
-
-    dex.push(
-      currentPokemon.dexNo
-    );
-
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  if (!dex.includes(currentPokemon.dexNo)) {
+    dex.push(currentPokemon.dexNo);
   }
-
-  localStorage.setItem(
-    "dex",
-    JSON.stringify(dex)
-  );
-
+  localStorage.setItem("dex", JSON.stringify(dex));
+  renderHomeDex();
+  if (!stickerArea.classList.contains("hidden")) {
+    renderPokemonStickerChoices();
+  }
 }
 
-// ====================
-// 図鑑一覧
-// ====================
+function renderHomeDex() {
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  if (!window.homeDexCount || !window.homeDexPreview) return;
+
+  homeDexCount.textContent = `${dex.length} / ${pokemonList.length}`;
+
+  const ownedPokemon = dex
+    .slice(-8)
+    .reverse()
+    .map(no => pokemonList.find(p => p.dexNo === no))
+    .filter(Boolean);
+
+  const slots = [];
+  for (let i = 0; i < 8; i++) {
+    const p = ownedPokemon[i];
+    slots.push(p
+      ? `<button class="homeDexSlot" onclick="openArea('dex'); showPokemon(${p.dexNo})"><img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}"></button>`
+      : `<div class="homeDexSlot">?</div>`
+    );
+  }
+
+  homeDexPreview.innerHTML = slots.join("");
+}
+
+function openDexPanel() {
+  hideAllPanels();
+  dexPanel.classList.remove("hidden");
+  renderDex();
+}
 
 function renderDex() {
-
-  const dex =
-    JSON.parse(
-      localStorage.getItem("dex") || "[]"
-    );
-
-  let html = "";
-
-  pokemonList.forEach(p => {
-
-    const owned =
-      dex.includes(
-        p.dexNo
-      );
-
-    html += `
-      <div
-        class="dexItem"
-        onclick="showPokemon(${p.dexNo})"
-      >
-        ${owned ? p.name : "？？？"}
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  dexCount.textContent = `${dex.length} / ${pokemonList.length}`;
+  dexContent.innerHTML = pokemonList.map(p => {
+    const owned = dex.includes(p.dexNo);
+    return `
+      <div class="dexItem" onclick="showPokemon(${p.dexNo})">
+        ${owned ? `${p.dexNo}. ${p.name}` : `${p.dexNo}. ？？？`}
       </div>
     `;
-
-  });
-
-  dexContent.innerHTML = html;
-
+  }).join("");
 }
-
-// ====================
-// 図鑑詳細
-// ====================
 
 function showPokemon(no) {
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  if (!dex.includes(no)) return;
 
-  const dex =
-    JSON.parse(
-      localStorage.getItem("dex") || "[]"
-    );
-
-  if (!dex.includes(no)) {
-    return;
-  }
-
-  const p =
-    pokemonList.find(
-      x => x.dexNo === no
-    );
-
+  const p = pokemonList.find(x => x.dexNo === no);
   dexContent.innerHTML = `
-  <button onclick="renderDex()">
-    ← もどる
-  </button>
-
-  <h3>${p.name}</h3>
-
-  <img
-    src="${getPokemonImage(p.pokemonId)}"
-    width="180"
-  >
-
-  <br><br>
-
-  <button onclick="playCry(${p.pokemonId})">
-    🔊 なきごえ
-  </button>
-`;
-
+    <button onclick="renderDex()">← もどる</button>
+    <h3>${p.dexNo}. ${p.name}</h3>
+    <img src="${getPokemonImage(p.pokemonId)}" width="180" alt="${p.name}">
+    <br><br>
+    <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
+  `;
 }
 
-// ====================
-// 図鑑開く
-// ====================
 
-function openDex() {
-
-  renderDex();
-
-  dexModal.classList.remove(
-    "hidden"
-  );
-
-}
-
-// ====================
-// 図鑑閉じる
-// ====================
-
-function closeDex() {
-
-  dexModal.classList.add(
-    "hidden"
-  );
-
-}

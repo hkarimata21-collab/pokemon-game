@@ -1,203 +1,173 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-    
-　　<!-- ホーム画面アイコン -->
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
-
-<title>ポケモンさんすう</title>
-
-<link rel="stylesheet" href="style.css">
-
-<link rel="icon" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
-  
-<link
-  rel="apple-touch-icon"
-  sizes="180x180"
-  href="icon.png"
->
-
-<meta
-  name="apple-mobile-web-app-capable"
-  content="yes"
->
-
-<meta
-  name="apple-mobile-web-app-title"
-  content="ポケモンさんすう"
->
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ポケモンまなびタウン</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="まなびタウン">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#7ed2ff">
+  <meta name="format-detection" content="telephone=no">
 </head>
-
 <body>
+  <main id="app">
+    <section id="townScreen" class="screen">
+      <header class="townHeader">
+        <div>
+          <p class="eyebrow">ポケモンとまなぶ</p>
+          <h1>まなびタウン</h1>
+        </div>
+      </header>
 
-    <!-- タイトル -->
+      <div class="townMap townScene" aria-label="まなびタウン">
+        <div class="townSkyline"></div>
+        <div class="townSun">☺</div>
+        <div class="townHill townHillBack"></div>
+        <div class="townHill townHillFront"></div>
+        <div class="townRoad townRoadMain"></div>
+        <div class="townRoad townRoadCross"></div>
+        <div class="townCrosswalk crosswalkOne"></div>
+        <div class="townCrosswalk crosswalkTwo"></div>
+        <div class="townPond"></div>
+        <div class="townTree treeOne"></div>
+        <div class="townTree treeTwo"></div>
+        <div class="townTree treeThree"></div>
+        <div class="townTree treeFour"></div>
+        <div class="townBench benchOne"></div>
+        <div class="townBench benchTwo"></div>
 
-    <header>
-
-        <h1>
-            ポケモン<br/>さんすう
-        </h1>
-
-        <button
-            id="dexButton"
-            onclick="openDex()"
-        >
-            📕ずかん
+        <button class="townBuilding schoolBuilding" onclick="openArea('math')" aria-label="さんすう広場">
+          <span class="buildingRoof"></span>
+          <span class="buildingIcon">＋</span>
+          <span class="buildingSign">さんすう広場</span>
+          <span class="buildingSub">足し算・引き算</span>
         </button>
 
-    </header>
-
-    <!-- ポケモン名 -->
-
-    <h2 id="pokemonName">
-        ポケモン
-    </h2>
-
-    <!-- バトルエリア -->
-
-    <div id="battleArea">
-
-        <!-- 草むら -->
-
-        <div id="grass"></div>
-
-        <!-- ポケモン -->
-
-        <img
-          id="pokemonImage"
-          src=""
-          alt="ポケモン"
-          onclick="playCry(currentPokemon.pokemonId)"
-        >
-
-        <!-- ボール -->
-
-        <img
-            id="ballImg"
-            src="ball.png"
-            alt="モンスターボール"
-        >
-        
-        <div id="catchEffect">
-          ゲットだぜ！
-        </div>
-        
-    </div>
-
-    <!-- メッセージ -->
-
-    <div id="message">
-
-    </div>
-
-<!-- 問題エリア -->
-
-<div id="questionArea">
-
-    <h2 id="question">
-        1 + 1 = ?
-    </h2>
-
-    <div id="visualQuestion"></div>
-
-    <input
-        id="answerInput"
-        type="number"
-        autocomplete="off"
-    >
-
-    <br><br>
-
-    <button
-        id="answerButton"
-        onclick="checkAnswer()"
-    >
-        こたえる
-    </button>
-    
-    <button
-      id="hintButton"
-      onclick="showHint()"
-    >
-      💡ヒント
-    </button>
-    
-    <button onclick="changePokemon()">
-        べつのポケモンにする
-    </button>
-
-</div>
-
-<!-- 捕獲エリア -->
-
-<div
-    id="catchArea"
-    class="hidden"
->
-
-    <button
-        id="throwButton"
-        onclick="throwBall()"
-    >
-        モンスターボールをなげる！
-    </button>
-
-</div>
-    <!-- 次へ -->
-
-    <div
-        id="nextArea"
-        class="hidden"
-    >
-
-        <button
-            id="nextButton"
-            onclick="nextPokemon()"
-        >
-            つぎのもんだい
+        <button class="townBuilding libraryBuilding" onclick="openArea('word')" aria-label="ことば広場">
+          <span class="buildingRoof"></span>
+          <span class="buildingIcon">あ</span>
+          <span class="buildingSign">ことば広場</span>
+          <span class="buildingSub">ひらがな・カタカナ・漢字</span>
         </button>
 
-    </div>
+        <button class="townBuilding atelierBuilding" onclick="openArea('pretend')" aria-label="おままごと広場">
+          <span class="buildingRoof"></span>
+          <span class="buildingIcon">✂</span>
+          <span class="buildingSign">おままごと広場</span>
+          <span class="buildingSub">ステッカー遊び</span>
+        </button>
 
-    <!-- 図鑑 -->
+        <button class="townBuilding giftBuilding" onclick="openArea('gift')" aria-label="プレゼント広場">
+          <span class="buildingRoof"></span>
+          <span class="buildingIcon">🎁</span>
+          <span class="buildingSign">プレゼント広場</span>
+          <span class="buildingSub">ごほうび</span>
+        </button>
+      </div>
 
-    <div
-        id="dexModal"
-        class="hidden"
-    >
+      <section id="homeDexPanel" class="homeDexPanel">
+        <div class="homeDexHeader">
+          <div>
+            <p class="eyebrow">📖 ポケモン図鑑</p>
+            <h2>ゲットしたポケモン</h2>
+          </div>
+          <button class="homeDexButton" onclick="openArea('dex')">ひらく</button>
+        </div>
+        <div id="homeDexCount" class="homeDexCount">0 / 200</div>
+        <div id="homeDexPreview" class="homeDexPreview"></div>
+      </section>
+    </section>
 
-        <div class="modal">
+    <section id="areaScreen" class="screen hidden">
+      <header class="appHeader">
+        <button class="backButton" onclick="goHome()">←</button>
+        <div>
+          <p id="areaKicker" class="eyebrow">ひろば</p>
+          <h1 id="areaTitle">さんすう広場</h1>
+        </div>
+        <button class="iconButton" onclick="openArea('dex')">📖</button>
+      </header>
 
-            <h2>
-                📖 ポケモン図鑑
-            </h2>
+      <div id="areaMenu" class="menuGrid"></div>
+      <div id="placeholderPanel" class="panel hidden"></div>
 
-            <div id="dexContent">
-
-            </div>
-
-            <br>
-
-            <button
-                onclick="closeDex()"
-            >
-                とじる
-            </button>
-
+      <section id="stickerArea" class="panel stickerPanel hidden">
+        <div class="stickerTopbar">
+          <div>
+            <p class="eyebrow">🎨 ステッカー遊び</p>
+            <h2>すきな背景にステッカーを貼ろう</h2>
+          </div>
+          <button onclick="clearStickers()">ぜんぶけす</button>
         </div>
 
-    </div>
+        <div class="backgroundPicker" aria-label="背景を選ぶ">
+          <button class="bgButton" onclick="setStickerBackground('room')">かわいい部屋</button>
+          <button class="bgButton" onclick="setStickerBackground('beach')">ビーチ</button>
+          <button class="bgButton" onclick="setStickerBackground('park')">公園</button>
+          <button class="bgButton" onclick="setStickerBackground('night')">よる</button>
+        </div>
 
-    <script src="app.js"></script>
+        <div class="stickerPlayLayout">
+          <div class="stickerTray">
+            <h3>ゲットしたポケモン</h3>
+            <div id="pokemonStickerTray" class="stickerChoiceGrid"></div>
+            <h3>こもの</h3>
+            <div id="itemStickerTray" class="stickerChoiceGrid"></div>
+          </div>
 
+          <div id="stickerBoard" class="stickerBoard boardRoom" aria-label="ステッカーを貼る場所"></div>
+        </div>
+      </section>
+
+      <section id="gameScreen" class="hidden">
+        <h2 id="pokemonName">ポケモン</h2>
+
+        <div id="battleArea">
+          <div id="grass"></div>
+          <img id="pokemonImage" src="" alt="ポケモン" onclick="playCry(currentPokemon.pokemonId)">
+          <img id="ballImg" src="ball.png" alt="モンスターボール">
+          <div id="catchEffect">ゲットだぜ！</div>
+        </div>
+
+        <div id="message"></div>
+
+        <div id="questionArea">
+          <h2 id="question">1 + 1 = ?</h2>
+          <div id="visualQuestion"></div>
+          <input id="answerInput" type="number" autocomplete="off" inputmode="numeric">
+          <div class="buttonRow">
+            <button id="answerButton" onclick="checkAnswer()">こたえる</button>
+            <button id="hintButton" onclick="showHint()">💡ヒント</button>
+            <button onclick="changePokemon()">べつのポケモン</button>
+          </div>
+        </div>
+
+        <div id="catchArea" class="hidden">
+          <button id="throwButton" onclick="throwBall()">モンスターボールをなげる！</button>
+        </div>
+
+        <div id="nextArea" class="hidden">
+          <button id="nextButton" onclick="nextPokemon()">つぎのもんだい</button>
+        </div>
+      </section>
+
+      <section id="dexPanel" class="panel hidden">
+        <div class="panelHeader">
+          <h2>📖 ポケモン図鑑</h2>
+          <span id="dexCount"></span>
+        </div>
+        <div id="dexContent"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
 </body>
-
 </html>
+
+
