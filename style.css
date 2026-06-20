@@ -1825,9 +1825,12 @@ button[disabled] {
   }
 }
 
+.landscapeWarning {
+  display: none;
+}
+
 @media (orientation: portrait) and (max-width: 900px) {
-  body.pretendLandscapeOnly::before {
-    content: "横向きにしてね";
+  body.showLandscapeWarning .landscapeWarning {
     position: fixed;
     inset: 0;
     z-index: 9999;
@@ -1835,25 +1838,39 @@ button[disabled] {
     place-items: center;
     padding: 24px;
     color: #263238;
-    font-size: clamp(26px, 8vw, 48px);
-    font-weight: 900;
     text-align: center;
     background:
       radial-gradient(circle at 50% 28%, #ffe850 0 54px, transparent 56px),
       linear-gradient(180deg, #86def7 0 46%, #6ad166 46% 100%);
   }
 
-  body.pretendLandscapeOnly::after {
-    content: "おままごと広場は横画面であそべるよ";
-    position: fixed;
-    left: 24px;
-    right: 24px;
-    top: calc(50% + 54px);
-    z-index: 10000;
+  .landscapeWarningPanel {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+  }
+
+  .landscapeWarningTitle {
+    font-size: clamp(26px, 8vw, 48px);
+    font-weight: 900;
+  }
+
+  .landscapeWarningText {
     color: #17654d;
     font-size: 18px;
     font-weight: 900;
-    text-align: center;
+  }
+
+  .landscapeBackButton {
+    min-width: 170px;
+    border: 0;
+    border-radius: 999px;
+    padding: 14px 22px;
+    background: #fff;
+    color: #17654d;
+    font-size: 18px;
+    font-weight: 900;
+    box-shadow: 0 8px 20px rgba(38, 72, 88, 0.2);
   }
 }
 
@@ -1955,11 +1972,17 @@ button[disabled] {
 
 /* Pretend landscape and tap stability */
 body.pretendLandscapeOnly {
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
-body.pretendLandscapeOnly .stickerPanel,
+body.pretendLandscapeOnly .stickerPanel {
+  max-height: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
 body.pretendLandscapeOnly .stickerBoard {
   touch-action: none;
 }
@@ -1977,3 +2000,4 @@ body.pretendLandscapeOnly .bgButton {
   position: relative;
   z-index: 35;
 }
+

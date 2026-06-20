@@ -16,6 +16,13 @@
   <meta name="format-detection" content="telephone=no">
 </head>
 <body>
+  <div id="landscapeWarning" class="landscapeWarning" aria-live="polite">
+    <div class="landscapeWarningPanel">
+      <div class="landscapeWarningTitle">横向きにしてね</div>
+      <div class="landscapeWarningText">おままごと広場は横画面であそべるよ</div>
+      <button type="button" class="landscapeBackButton" onclick="goHome()">ホームにもどる</button>
+    </div>
+  </div>
   <main id="app">
     <section id="townScreen" class="screen">
       <header class="townHeader">
@@ -170,6 +177,8 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+
 
 
 

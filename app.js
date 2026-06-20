@@ -257,14 +257,14 @@ const soundFiles = [
   "escape.mp3"
 ];
 
-const bgmHomeFile = "オーキド研究所.mp3";
+const bgmHomeFile = "bgm-home.mp3";
 const bgmFacilityFiles = [
-  "タマムシシティのテーマ.mp3",
-  "殿堂入り.mp3",
-  "ポケモンセンター.mp3",
-  "ハナダシティのテーマ.mp3",
-  "マサラタウンのテーマ.mp3",
-  "グレンタウンのテーマ.mp3"
+  "bgm-facility-01.mp3",
+  "bgm-facility-02.mp3",
+  "bgm-facility-03.mp3",
+  "bgm-facility-04.mp3",
+  "bgm-facility-05.mp3",
+  "bgm-facility-06.mp3"
 ];
 
 const soundPools = {};
@@ -306,6 +306,7 @@ function retryBgmFromGesture() {
 
 window.addEventListener("pointerdown", retryBgmFromGesture);
 window.addEventListener("touchstart", retryBgmFromGesture, { passive: true });
+window.addEventListener("touchend", retryBgmFromGesture, { passive: true });
 window.addEventListener("click", retryBgmFromGesture);
 
 const areaData = {
@@ -435,7 +436,9 @@ function resumePendingBgm() {
 
   const audio = getBgmAudio();
   if (audio.paused) {
-    audio.play().catch(() => {});
+    audio.play().catch(() => {
+      window.setTimeout(() => audio.play().catch(() => {}), 250);
+    });
   }
 }
 
@@ -464,7 +467,9 @@ function playBgm(file, options = {}) {
   audio.muted = false;
 
   if (!soundsUnlocked) return;
-  audio.play().catch(() => {});
+  audio.play().catch(() => {
+    window.setTimeout(() => audio.play().catch(() => {}), 250);
+  });
 }
 
 function playHomeBgm() {
@@ -505,6 +510,7 @@ async function enterPretendLandscapeMode() {
 
 function exitPretendLandscapeMode() {
   document.body.classList.remove("pretendLandscapeOnly");
+  document.body.classList.remove("showLandscapeWarning");
 
   try {
     if (screen.orientation?.unlock) {
@@ -518,6 +524,16 @@ function exitPretendLandscapeMode() {
     }
   } catch (_) {}
 }
+function updateLandscapeWarning() {
+  const shouldShow = document.body.classList.contains("pretendLandscapeOnly")
+    && window.matchMedia("(orientation: portrait)").matches
+    && window.innerWidth <= 900;
+  document.body.classList.toggle("showLandscapeWarning", shouldShow);
+}
+
+window.addEventListener("resize", updateLandscapeWarning);
+window.addEventListener("orientationchange", () => window.setTimeout(updateLandscapeWarning, 150));
+
 function hideAllPanels() {
   exitPretendLandscapeMode();
   areaMenu.classList.add("hidden");
@@ -799,6 +815,7 @@ function syncDexWithOwnedRewards() {
 function openStickerPlay() {
   hideAllPanels();
   enterPretendLandscapeMode();
+  updateLandscapeWarning();
   areaMenu.classList.add("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
@@ -1557,6 +1574,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
