@@ -1,0 +1,16 @@
+﻿{
+  "name": "ポケモンまなびタウン",
+  "short_name": "まなびタウン",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#7ed2ff",
+  "theme_color": "#7ed2ff",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

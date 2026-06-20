@@ -257,25 +257,32 @@ const soundPools = {};
 const soundPoolIndex = {};
 let crySound = null;
 let activeThrowSound = null;
+let soundsUnlocked = false;
 
 soundFiles.forEach(file => {
   soundPoolIndex[file] = 0;
-  soundPools[file] = Array.from({ length: 4 }, () => {
-    const audio = new Audio(file);
-    audio.preload = "auto";
-    audio.volume = 1.0;
-    return audio;
-  });
+  soundPools[file] = [createSound(file)];
 });
 
+function createSound(file) {
+  const audio = new Audio(file);
+  audio.preload = "auto";
+  audio.volume = 1.0;
+  audio.load();
+  return audio;
+}
+
 function unlockSoundsOnce() {
+  if (soundsUnlocked) return;
+  soundsUnlocked = true;
+
   soundFiles.forEach(file => {
     const audio = soundPools[file][0];
     audio.muted = true;
+    audio.currentTime = 0;
     audio.play()
       .then(() => {
-        audio.pause();
-        audio.currentTime = 0;
+        resetAudio(audio);
         audio.muted = false;
       })
       .catch(() => {
@@ -285,6 +292,8 @@ function unlockSoundsOnce() {
 }
 
 window.addEventListener("pointerdown", unlockSoundsOnce, { once: true });
+window.addEventListener("touchstart", unlockSoundsOnce, { once: true, passive: true });
+window.addEventListener("click", unlockSoundsOnce, { once: true });
 
 const areaData = {
   math: {
@@ -326,6 +335,7 @@ const areaData = {
 };
 
 window.addEventListener("load", () => {
+  syncDexWithOwnedRewards();
   goHome();
 });
 
@@ -371,11 +381,7 @@ function stopThrowSound() {
 function playSound(file, speed = 1) {
   if (!soundPools[file]) {
     soundPoolIndex[file] = 0;
-    soundPools[file] = Array.from({ length: 2 }, () => {
-      const audio = new Audio(file);
-      audio.preload = "auto";
-      return audio;
-    });
+    soundPools[file] = [createSound(file)];
   }
 
   const pool = soundPools[file];
@@ -456,27 +462,224 @@ function showRewards() {
   placeholderPanel.classList.remove("hidden");
 }
 
-const stickerItems = [
-  { id: "tree", icon: "🌳", label: "木" },
-  { id: "flower", icon: "🌸", label: "花" },
-  { id: "rock", icon: "🪨", label: "岩" },
-  { id: "bench", icon: "🪑", label: "ベンチ" },
-  { id: "house", icon: "🏠", label: "家" },
-  { id: "food", icon: "🍰", label: "食べ物" },
-  { id: "ball", icon: "🔴", label: "モンスターボール" },
-  { id: "apple", icon: "🍎", label: "りんご" },
-  { id: "bear", icon: "🧸", label: "ぬいぐるみ" },
-  { id: "ribbon", icon: "🎀", label: "リボン" }
+const rewards = {
+  pokemon: pokemonList.map(p => ({
+    id: String(p.dexNo),
+    dexNo: p.dexNo,
+    pokemonId: p.pokemonId,
+    label: p.name,
+    category: "pokemon"
+  })),
+  furniture: [
+    { id: "chair", icon: "🪑", label: "いす", category: "furniture" },
+    { id: "table", icon: "🟫", label: "テーブル", category: "furniture" },
+    { id: "bed", icon: "🛏️", label: "ベッド", category: "furniture" },
+    { id: "sofa", icon: "🛋️", label: "ソファ", category: "furniture" },
+    { id: "bookshelf", icon: "📚", label: "本だな", category: "furniture" },
+    { id: "plant", icon: "🪴", label: "植物", category: "furniture" }
+  ],
+  food: [
+    { id: "apple", icon: "🍎", label: "りんご", category: "food" },
+    { id: "cake", icon: "🍰", label: "ケーキ", category: "food" },
+    { id: "donut", icon: "🍩", label: "ドーナツ", category: "food" },
+    { id: "juice", icon: "🧃", label: "ジュース", category: "food" }
+  ],
+  decoration: [
+    { id: "tree", icon: "🌳", label: "木", category: "decoration" },
+    { id: "flower", icon: "🌸", label: "花", category: "decoration" },
+    { id: "rock", icon: "🪨", label: "岩", category: "decoration" },
+    { id: "ball", icon: "🔴", label: "モンスターボール", category: "decoration" },
+    { id: "ribbon", icon: "🎀", label: "リボン", category: "decoration" },
+    { id: "sign", icon: "🪧", label: "看板", category: "decoration" }
+  ],
+  background: [
+    { id: "forest", icon: "🌲", label: "森", category: "background" },
+    { id: "sea", icon: "🏖️", label: "海", category: "background" },
+    { id: "park", icon: "🌳", label: "公園", category: "background" },
+    { id: "town", icon: "🏙️", label: "街", category: "background" },
+    { id: "home", icon: "🏠", label: "おうち", category: "background" }
+  ],
+  building: [
+    { id: "house", icon: "🏠", label: "おうち", category: "building" },
+    { id: "shop", icon: "🏪", label: "ショップ", category: "building" },
+    { id: "school", icon: "🏫", label: "学校", category: "building" },
+    { id: "restaurant", icon: "🍽️", label: "レストラン", category: "building" },
+    { id: "center", icon: "🏥", label: "ポケモンセンター", category: "building" }
+  ]
+};
+
+const rewardCategories = ["pokemon", "furniture", "food", "decoration", "background", "building"];
+const placeableRewardCategories = ["furniture", "food", "decoration", "building"];
+const starterRewards = {
+  pokemon: [],
+  furniture: ["chair"],
+  food: ["apple"],
+  decoration: ["ball"],
+  background: ["forest"],
+  building: []
+};
+
+const learningRewardPlan = [
+  { category: "furniture", id: "table" },
+  { category: "decoration", id: "flower" },
+  { category: "food", id: "cake" },
+  { category: "background", id: "home" },
+  { category: "furniture", id: "bed" },
+  { category: "decoration", id: "tree" },
+  { category: "building", id: "house" },
+  { category: "food", id: "juice" },
+  { category: "background", id: "park" },
+  { category: "furniture", id: "sofa" },
+  { category: "building", id: "shop" },
+  { category: "background", id: "sea" },
+  { category: "decoration", id: "sign" },
+  { category: "building", id: "school" },
+  { category: "background", id: "town" }
 ];
 
-const stickerBackgrounds = ["forest", "sea", "park", "town", "home"];
+const stickerItems = placeableRewardCategories.flatMap(category =>
+  rewards[category].map(item => ({ ...item }))
+);
 
+const stickerBackgrounds = rewards.background.map(background => background.id);
+
+
+function normalizeRewardId(id) {
+  return String(id);
+}
+
+function createEmptyOwnedRewards() {
+  return rewardCategories.reduce((owned, category) => {
+    owned[category] = [];
+    return owned;
+  }, {});
+}
+
+function getOwnedRewards() {
+  const owned = {
+    ...createEmptyOwnedRewards(),
+    ...JSON.parse(localStorage.getItem("ownedRewards") || "{}")
+  };
+
+  rewardCategories.forEach(category => {
+    const starter = starterRewards[category] || [];
+    owned[category] = [...new Set([
+      ...starter.map(normalizeRewardId),
+      ...(owned[category] || []).map(normalizeRewardId)
+    ])];
+  });
+
+  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  if (dex.length > 0) {
+    owned.pokemon = [...new Set([
+      ...owned.pokemon,
+      ...dex.map(normalizeRewardId)
+    ])];
+  }
+
+  localStorage.setItem("ownedRewards", JSON.stringify(owned));
+  return owned;
+}
+
+function saveOwnedRewards(owned) {
+  localStorage.setItem("ownedRewards", JSON.stringify(owned));
+}
+
+function getRewardDefinition(category, id) {
+  const normalizedId = normalizeRewardId(id);
+  return (rewards[category] || []).find(reward => normalizeRewardId(reward.id) === normalizedId);
+}
+
+function addOwnedReward(category, id, options = {}) {
+  const normalizedId = normalizeRewardId(id);
+  const owned = getOwnedRewards();
+
+  if (!owned[category]) {
+    owned[category] = [];
+  }
+
+  if (owned[category].includes(normalizedId)) {
+    return false;
+  }
+
+  owned[category].push(normalizedId);
+  saveOwnedRewards(owned);
+
+  if (!options.silent) {
+    const reward = getRewardDefinition(category, normalizedId);
+    showRewardNotice(reward?.label || "あたらしいアイテム");
+  }
+
+  if (!stickerArea.classList.contains("hidden")) {
+    renderStickerChoices();
+  }
+
+  return true;
+}
+
+function showRewardNotice(label) {
+  if (!window.message) return;
+  message.textContent = `${label}をゲット！\nおままごと広場で使えるようになったよ！`;
+}
+
+function awardNextLearningReward() {
+  let progress = Number(localStorage.getItem("learningRewardProgress") || "0");
+
+  while (progress < learningRewardPlan.length) {
+    const reward = learningRewardPlan[progress];
+    progress++;
+    localStorage.setItem("learningRewardProgress", String(progress));
+
+    if (addOwnedReward(reward.category, reward.id)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getStoredDex() {
+  return JSON.parse(localStorage.getItem("dex") || "[]")
+    .map(Number)
+    .filter(Boolean);
+}
+
+function getOwnedPokemonDexNumbers() {
+  const owned = JSON.parse(localStorage.getItem("ownedRewards") || "{}");
+  return (owned.pokemon || [])
+    .map(Number)
+    .filter(Boolean);
+}
+
+function getUnifiedDex() {
+  return [...new Set([
+    ...getStoredDex(),
+    ...getOwnedPokemonDexNumbers()
+  ])];
+}
+
+function syncDexWithOwnedRewards() {
+  const dex = getUnifiedDex();
+  localStorage.setItem("dex", JSON.stringify(dex));
+
+  const owned = {
+    ...createEmptyOwnedRewards(),
+    ...JSON.parse(localStorage.getItem("ownedRewards") || "{}")
+  };
+  owned.pokemon = [...new Set([
+    ...(owned.pokemon || []).map(normalizeRewardId),
+    ...dex.map(normalizeRewardId)
+  ])];
+  localStorage.setItem("ownedRewards", JSON.stringify(owned));
+  return dex;
+}
 function openStickerPlay() {
   hideAllPanels();
   areaMenu.classList.add("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
-  const savedBackground = localStorage.getItem("stickerBackground") || "forest";
+  const owned = getOwnedRewards();
+  const savedBackground = localStorage.getItem("stickerBackground") || owned.background[0] || "forest";
   setStickerBackground(savedBackground, { saveCurrent: false });
 }
 
@@ -485,36 +688,66 @@ function getStickerStorageKey(background = currentStickerBackground) {
 }
 
 function renderStickerChoices() {
+  renderBackgroundChoices();
   renderPokemonStickerChoices();
-  itemStickerTray.innerHTML = stickerItems.map(item => `
-    <button class="paletteSticker" type="button" onclick="addItemSticker('${item.id}')" aria-label="${item.label}">
+  renderItemStickerChoices();
+}
+
+function renderItemStickerChoices() {
+  const owned = getOwnedRewards();
+  const ownedItems = placeableRewardCategories.flatMap(category =>
+    (owned[category] || [])
+      .map(id => getRewardDefinition(category, id))
+      .filter(Boolean)
+  );
+
+  if (ownedItems.length === 0) {
+    itemStickerTray.innerHTML = `<div class="emptyPaletteMessage">?</div>`;
+    return;
+  }
+
+  itemStickerTray.innerHTML = ownedItems.map(item => `
+    <button class="paletteSticker" type="button" onclick="addItemSticker('${item.category}', '${item.id}')" aria-label="${item.label}">
       ${item.icon}
     </button>
   `).join("");
 }
 
 function renderPokemonStickerChoices() {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
-  const ownedPokemon = dex
-    .map(no => pokemonList.find(p => p.dexNo === no))
+  const owned = getOwnedRewards();
+  const ownedPokemon = (owned.pokemon || [])
+    .map(no => pokemonList.find(p => String(p.dexNo) === String(no)))
     .filter(Boolean);
 
-  const visiblePokemon = ownedPokemon.length > 0
-    ? ownedPokemon
-    : pokemonList.slice(0, 6);
+  if (ownedPokemon.length === 0) {
+    pokemonStickerTray.innerHTML = `<div class="emptyPaletteMessage">?</div>`;
+    return;
+  }
 
-  pokemonStickerTray.innerHTML = visiblePokemon.map(p => `
+  pokemonStickerTray.innerHTML = ownedPokemon.map(p => `
     <button class="paletteSticker pokemonPaletteSticker" type="button" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
       <img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">
     </button>
   `).join("");
 }
 
+function renderBackgroundChoices() {
+  const owned = getOwnedRewards();
+  document.querySelectorAll(".bgButton").forEach(button => {
+    const match = button.getAttribute("onclick")?.match(/'([^']+)'/);
+    const backgroundId = match?.[1];
+    const isOwned = owned.background.includes(backgroundId);
+    button.hidden = !isOwned;
+    button.disabled = !isOwned;
+  });
+}
+
 function setStickerBackground(name, options = {}) {
   const shouldSaveCurrent = options.saveCurrent !== false;
+  const owned = getOwnedRewards();
 
-  if (!stickerBackgrounds.includes(name)) {
-    name = "forest";
+  if (!stickerBackgrounds.includes(name) || !owned.background.includes(name)) {
+    name = owned.background[0] || "forest";
   }
 
   if (shouldSaveCurrent) {
@@ -544,11 +777,14 @@ function addSticker(mark) {
   addItemSticker(mark);
 }
 
-function addItemSticker(itemId) {
-  const item = stickerItems.find(x => x.id === itemId) || { id: itemId, icon: itemId, label: itemId };
+function addItemSticker(category, itemId) {
+  const item = getRewardDefinition(category, itemId);
+  if (!item) return;
+
   createSticker({
     type: "item",
     itemId: item.id,
+    category: item.category,
     content: item.icon,
     label: item.label
   });
@@ -582,6 +818,7 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
     sticker.innerHTML = `<img src="${stickerData.content}" alt="${stickerData.label || "ポケモン"}">`;
   } else {
     sticker.dataset.itemId = stickerData.itemId || stickerData.content;
+    sticker.dataset.category = stickerData.category || "";
     sticker.dataset.content = stickerData.content;
     sticker.dataset.label = stickerData.label || "";
     sticker.textContent = stickerData.content;
@@ -660,6 +897,7 @@ function saveStickerScene() {
     return {
       type: sticker.dataset.type,
       itemId: sticker.dataset.itemId || "",
+      category: sticker.dataset.category || "",
       content: sticker.dataset.content || "",
       dexNo: Number(sticker.dataset.dexNo || 0),
       pokemonId: Number(sticker.dataset.pokemonId || 0),
@@ -689,10 +927,12 @@ function loadStickerScene() {
         label: sticker.label
       }, sticker, false);
     } else {
-      const item = stickerItems.find(x => x.id === sticker.itemId);
+      const item = getRewardDefinition(sticker.category, sticker.itemId)
+        || stickerItems.find(x => x.id === sticker.itemId);
       createSticker({
         type: "item",
         itemId: sticker.itemId,
+        category: sticker.category || item?.category || "",
         content: sticker.content || item?.icon || "⭐",
         label: sticker.label || item?.label || ""
       }, sticker, false);
@@ -852,6 +1092,7 @@ function checkAnswer() {
     questionArea.classList.add("hidden");
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
+    awardNextLearningReward();
   } else {
     playSound("wrong.mp3");
     catchArea.classList.add("hidden");
@@ -926,12 +1167,15 @@ function catchPokemon() {
     }
     playSound("get.mp3");
     savePokemon();
+    const gotNewPokemonReward = addOwnedReward("pokemon", currentPokemon.dexNo);
     catchCount = 0;
     catchEffect.classList.remove("catch-show");
     void catchEffect.offsetWidth;
     catchEffect.classList.add("catch-show");
 
-    message.textContent = "";
+    if (!gotNewPokemonReward) {
+      message.textContent = "";
+    }
     questionArea.classList.add("hidden");
     catchArea.classList.add("hidden");
     nextArea.classList.remove("hidden");
@@ -950,19 +1194,19 @@ function catchPokemon() {
 }
 
 function savePokemon() {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const dex = getUnifiedDex();
   if (!dex.includes(currentPokemon.dexNo)) {
     dex.push(currentPokemon.dexNo);
   }
   localStorage.setItem("dex", JSON.stringify(dex));
   renderHomeDex();
   if (!stickerArea.classList.contains("hidden")) {
-    renderPokemonStickerChoices();
+    renderStickerChoices();
   }
 }
 
 function renderHomeDex() {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const dex = syncDexWithOwnedRewards();
   if (!window.homeDexCount || !window.homeDexPreview) return;
 
   homeDexCount.textContent = `${dex.length} / ${pokemonList.length}`;
@@ -992,7 +1236,7 @@ function openDexPanel() {
 }
 
 function renderDex() {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const dex = syncDexWithOwnedRewards();
   dexCount.textContent = `${dex.length} / ${pokemonList.length}`;
   dexContent.innerHTML = pokemonList.map(p => {
     const owned = dex.includes(p.dexNo);
@@ -1005,10 +1249,11 @@ function renderDex() {
 }
 
 function showPokemon(no) {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
-  if (!dex.includes(no)) return;
+  const dexNo = Number(no);
+  const dex = syncDexWithOwnedRewards();
+  if (!dex.includes(dexNo)) return;
 
-  const p = pokemonList.find(x => x.dexNo === no);
+  const p = pokemonList.find(x => x.dexNo === dexNo);
   dexContent.innerHTML = `
     <button onclick="renderDex()">← もどる</button>
     <h3>${p.dexNo}. ${p.name}</h3>
@@ -1017,6 +1262,11 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
+
+
 
 
 
