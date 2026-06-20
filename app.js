@@ -1,4 +1,4 @@
-﻿// ====================
+// ====================
 // ポケモンデータ
 // ====================
 
@@ -828,7 +828,7 @@ function checkAnswer() {
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
   } else {
-    playSound("wrong.mp3");
+    playSound("escape.mp3");
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
     message.textContent = "おしい！もういちどがんばれ！";
