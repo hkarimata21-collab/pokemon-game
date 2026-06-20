@@ -247,6 +247,8 @@ let stickerStartX = 0;
 let stickerStartY = 0;
 let stickerPendingPosition = null;
 let stickerMoveFrame = null;
+let pretendAutonomyTimer = null;
+let lastPretendInteractionAt = 0;
 
 const soundFiles = [
   "correct.mp3",
@@ -535,6 +537,7 @@ window.addEventListener("resize", updateLandscapeWarning);
 window.addEventListener("orientationchange", () => window.setTimeout(updateLandscapeWarning, 150));
 
 function hideAllPanels() {
+  stopPretendAutonomy();
   exitPretendLandscapeMode();
   areaMenu.classList.add("hidden");
   placeholderPanel.classList.add("hidden");
@@ -819,6 +822,7 @@ function openStickerPlay() {
   areaMenu.classList.add("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
+  startPretendAutonomy();
   const owned = getOwnedRewards();
   const savedBackground = localStorage.getItem("stickerBackground") || owned.background[0] || "forest";
   setStickerBackground(savedBackground, { saveCurrent: false });
@@ -957,6 +961,8 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
     sticker.dataset.pokemonId = stickerData.pokemonId;
     sticker.dataset.label = stickerData.label || "";
     sticker.dataset.reaction = savedState?.reaction || "";
+    sticker.dataset.pokeState = savedState?.pokeState || savedState?.reaction || "normal";
+    sticker.dataset.facing = savedState?.facing || "1";
     sticker.innerHTML = `<img src="${stickerData.content}" alt="${stickerData.label || "ポケモン"}">`;
   } else {
     sticker.dataset.itemId = stickerData.itemId || stickerData.content;
@@ -976,8 +982,8 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
 
   updateStickerTransform(sticker);
   stickerBoard.appendChild(sticker);
-  if (sticker.dataset.type === "pokemon" && sticker.dataset.reaction) {
-    applyPokemonReaction(sticker, sticker.dataset.reaction, { quiet: true });
+  if (sticker.dataset.type === "pokemon" && sticker.dataset.pokeState && sticker.dataset.pokeState !== "normal") {
+    applyPokemonReaction(sticker, sticker.dataset.pokeState, { quiet: true });
   }
 
   if (shouldSave) {
@@ -1002,19 +1008,23 @@ function updateStickerTransform(sticker) {
   const scale = Number(sticker.dataset.scale || 1);
   const rotation = Number(sticker.dataset.rotation || 0);
   const dragBoost = sticker.classList.contains("isDragging") ? 1.1 : 1;
-  const pose = sticker.dataset.reaction || "";
-  const poseRotate = pose === "sleep" ? -16 : pose === "sit" ? -4 : 0;
-  const poseY = pose === "sit" ? 8 : pose === "eat" ? -2 : 0;
-  const poseScaleX = pose === "sleep" ? 1.08 : 1;
-  const poseScaleY = pose === "sleep" ? 0.9 : 1;
-  const transform = `translateY(${poseY}px) scale(${(scale * dragBoost * poseScaleX).toFixed(3)}, ${(scale * dragBoost * poseScaleY).toFixed(3)}) rotate(${rotation + poseRotate}deg)`;
+  const pose = sticker.dataset.reaction || sticker.dataset.pokeState || "";
+  const facing = sticker.dataset.type === "pokemon" ? Number(sticker.dataset.facing || 1) : 1;
+  const poseRotate = pose === "sleeping" || pose === "sleep" ? -16 : pose === "sit" ? -4 : 0;
+  const poseY = pose === "sit" ? 8 : pose === "eating" || pose === "eat" ? -2 : 0;
+  const poseScaleX = pose === "sleeping" || pose === "sleep" ? 1.08 : 1;
+  const poseScaleY = pose === "sleeping" || pose === "sleep" ? 0.9 : 1;
+  const scaleX = (scale * dragBoost * poseScaleX * facing).toFixed(3);
+  const scaleY = (scale * dragBoost * poseScaleY).toFixed(3);
+  const transform = `translateY(${poseY}px) scale(${scaleX}, ${scaleY}) rotate(${rotation + poseRotate}deg)`;
   sticker.style.transform = transform;
   sticker.style.setProperty("--rest-transform", transform);
 }
 
 function clearPokemonReaction(sticker) {
-  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning");
+  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isWalking", "isHungry", "isSleepy");
   sticker.dataset.reaction = "";
+  sticker.dataset.pokeState = "normal";
   sticker.dataset.bubble = "";
   updateStickerTransform(sticker);
 }
@@ -1022,35 +1032,57 @@ function clearPokemonReaction(sticker) {
 function applyPokemonReaction(sticker, reaction, options = {}) {
   if (!sticker || sticker.dataset.type !== "pokemon") return;
 
-  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning");
+  const normalizedReaction = {
+    sleep: "sleeping",
+    eat: "eating",
+    play: "playing"
+  }[reaction] || reaction;
+
+  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isHungry", "isSleepy");
   const reactionClass = {
-    sleep: "isSleeping",
+    sleeping: "isSleeping",
     sit: "isSitting",
-    eat: "isEating",
+    eating: "isEating",
+    hungry: "isHungry",
+    sleepy: "isSleepy",
     happy: "isHappy",
+    playing: "isPlaying",
     heal: "isHealing",
     learn: "isLearning"
-  }[reaction];
+  }[normalizedReaction];
 
   if (!reactionClass) {
     clearPokemonReaction(sticker);
     return;
   }
 
-  sticker.dataset.reaction = reaction;
+  sticker.dataset.reaction = normalizedReaction;
+  sticker.dataset.pokeState = normalizedReaction;
   sticker.classList.add(reactionClass);
   sticker.dataset.bubble = {
-    sleep: "Zzz",
+    hungry: "🍔",
+    sleepy: "💤",
+    sleeping: "Zzz",
     sit: "すわった",
-    eat: "もぐもぐ",
-    happy: "♪",
+    eating: "❤️",
+    happy: "❤️",
+    playing: "🎾",
     heal: "げんき!",
     learn: "できた!"
-  }[reaction] || "";
+  }[normalizedReaction] || "";
   updateStickerTransform(sticker);
 
-  if (!options.quiet && reaction === "happy") {
+  if (!options.quiet && (normalizedReaction === "happy" || normalizedReaction === "playing" || normalizedReaction === "eating")) {
     playCry(Number(sticker.dataset.pokemonId || 0));
+  }
+
+  if (!options.keep && ["happy", "eating", "playing", "heal", "learn"].includes(normalizedReaction)) {
+    window.setTimeout(() => {
+      if (sticker.dataset.pokeState === normalizedReaction && !sticker.classList.contains("isDragging")) {
+        clearPokemonReaction(sticker);
+        saveStickerScene();
+      }
+    }, normalizedReaction === "happy" ? 2200 : 3200);
   }
 }
 
@@ -1071,9 +1103,10 @@ function getItemReaction(item) {
   const itemId = item.dataset.itemId;
   const category = item.dataset.category;
 
-  if (itemId === "bed" || itemId === "sofa") return "sleep";
+  if (itemId === "bed" || itemId === "sofa") return "sleeping";
   if (itemId === "chair" || itemId === "table") return "sit";
-  if (category === "food" || itemId === "restaurant") return "eat";
+  if (category === "food" || itemId === "restaurant") return "eating";
+  if (itemId === "ball" || itemId === "tree" || itemId === "flower") return "playing";
   if (itemId === "center") return "heal";
   if (itemId === "school" || itemId === "bookshelf") return "learn";
   return "";
@@ -1100,7 +1133,17 @@ function reactToNearbyToy(pokemonSticker) {
   const boardRect = stickerBoard.getBoundingClientRect();
   const snapDistance = Math.max(82, Math.min(boardRect.width, boardRect.height) * 0.15);
   if (nearest && nearestDistance <= snapDistance) {
-    applyPokemonReaction(pokemonSticker, nearest.reaction);
+    const state = pokemonSticker.dataset.pokeState || "normal";
+    const reaction = nearest.reaction;
+    const matchesNeed = (state === "hungry" && reaction === "eating")
+      || (state === "sleepy" && reaction === "sleeping")
+      || (state === "playing" && reaction === "playing")
+      || state === "normal"
+      || state === "happy";
+
+    if (matchesNeed) {
+      applyPokemonReaction(pokemonSticker, reaction, { keep: reaction === "sleeping" });
+    }
   }
 }
 
@@ -1150,6 +1193,103 @@ function moveStickerToPointer(event) {
   });
 }
 
+
+function startPretendAutonomy() {
+  stopPretendAutonomy();
+  lastPretendInteractionAt = Date.now();
+  pretendAutonomyTimer = window.setInterval(runPretendAutonomyTick, 4200);
+}
+
+function stopPretendAutonomy() {
+  if (!pretendAutonomyTimer) return;
+  window.clearInterval(pretendAutonomyTimer);
+  pretendAutonomyTimer = null;
+}
+
+function getStickerPercentPosition(sticker) {
+  return {
+    x: parseFloat(sticker.style.left) || 0,
+    y: parseFloat(sticker.style.top) || 0
+  };
+}
+
+function isPokemonBusy(sticker) {
+  return !sticker
+    || sticker === activeSticker
+    || sticker.classList.contains("isDragging")
+    || ["sleeping", "eating", "playing"].includes(sticker.dataset.pokeState || "");
+}
+
+function runPretendAutonomyTick() {
+  if (stickerArea.classList.contains("hidden")) return;
+  if (Date.now() - lastPretendInteractionAt < 2500) return;
+
+  const pokemonStickers = [...stickerBoard.querySelectorAll(".pokemonSticker")];
+  if (pokemonStickers.length === 0) return;
+
+  pokemonStickers.forEach(sticker => {
+    if (isPokemonBusy(sticker)) return;
+
+    const roll = Math.random();
+    if (roll < 0.38) {
+      walkPokemonRandomly(sticker);
+    } else if (roll < 0.66) {
+      showRandomPokemonMood(sticker);
+    }
+  });
+}
+
+function walkPokemonRandomly(sticker) {
+  const current = getStickerPercentPosition(sticker);
+  const deltaX = -7 + Math.random() * 14;
+  const deltaY = -4 + Math.random() * 8;
+  const nextX = Math.max(4, Math.min(88, current.x + deltaX));
+  const nextY = Math.max(8, Math.min(82, current.y + deltaY));
+
+  sticker.dataset.facing = nextX >= current.x ? "1" : "-1";
+  sticker.classList.add("isWalking");
+  updateStickerTransform(sticker);
+  sticker.style.left = `${nextX}%`;
+  sticker.style.top = `${nextY}%`;
+
+  window.setTimeout(() => {
+    sticker.classList.remove("isWalking");
+    updateStickerTransform(sticker);
+    saveStickerScene();
+  }, 1900);
+}
+
+function showRandomPokemonMood(sticker) {
+  if (isPokemonBusy(sticker)) return;
+
+  const moods = [
+    { state: "hungry", bubble: "🍔" },
+    { state: "sleepy", bubble: "💤" },
+    { state: "happy", bubble: "❤️" },
+    { state: "playing", bubble: "🎾" }
+  ];
+  const mood = moods[Math.floor(Math.random() * moods.length)];
+
+  applyPokemonReaction(sticker, mood.state, { quiet: true, keep: true });
+  sticker.dataset.bubble = mood.bubble;
+
+  if (mood.state === "happy") {
+    window.setTimeout(() => {
+      if (sticker.dataset.pokeState === "happy" && !sticker.classList.contains("isDragging")) {
+        clearPokemonReaction(sticker);
+        saveStickerScene();
+      }
+    }, 3000);
+  } else {
+    window.setTimeout(() => {
+      if (sticker.dataset.pokeState === mood.state && !sticker.classList.contains("isDragging")) {
+        sticker.dataset.bubble = "";
+      }
+    }, 3600);
+  }
+
+  saveStickerScene();
+}
 function deleteSelectedSticker() {
   if (!selectedSticker) return;
   selectedSticker.remove();
@@ -1197,7 +1337,9 @@ function saveStickerScene() {
       y: Math.max(0, Math.min(100, top)),
       scale: Number(sticker.dataset.scale || 1),
       rotation: Number(sticker.dataset.rotation || 0),
-      reaction: sticker.dataset.reaction || ""
+      reaction: sticker.dataset.reaction || "",
+      pokeState: sticker.dataset.pokeState || "normal",
+      facing: sticker.dataset.facing || "1"
     };
   });
 
@@ -1236,6 +1378,7 @@ function loadStickerScene() {
 }
 
 stickerBoard.addEventListener("pointerdown", (event) => {
+  lastPretendInteractionAt = Date.now();
   event.preventDefault();
   const sticker = event.target.closest(".sticker");
   if (!sticker) {
@@ -1277,6 +1420,8 @@ function finishStickerPointer(event) {
   const sticker = activeSticker;
   sticker.classList.remove("isDragging");
   updateStickerTransform(sticker);
+
+  lastPretendInteractionAt = Date.now();
 
   if (stickerDragMoved) {
     reactToNearbyToy(sticker);
@@ -1574,6 +1719,9 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
 
 
 
