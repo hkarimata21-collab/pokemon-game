@@ -1,4 +1,4 @@
-// ====================
+﻿// ====================
 // ポケモンデータ
 // ====================
 
@@ -249,12 +249,14 @@ const soundFiles = [
   "wrong.mp3",
   "throw.mp3",
   "shake.mp3",
-  "get.mp3"
+  "get.mp3",
+  "escape.mp3"
 ];
 
 const soundPools = {};
 const soundPoolIndex = {};
 let crySound = null;
+let activeThrowSound = null;
 
 soundFiles.forEach(file => {
   soundPoolIndex[file] = 0;
@@ -344,6 +346,28 @@ function playCry(id) {
   crySound.play().catch(() => {});
 }
 
+function resetAudio(sound) {
+  if (!sound) return;
+
+  sound.pause();
+  try {
+    sound.currentTime = 0;
+  } catch (_) {}
+}
+
+function stopSound(file) {
+  const pool = soundPools[file];
+  if (!pool) return;
+
+  pool.forEach(resetAudio);
+}
+
+function stopThrowSound() {
+  resetAudio(activeThrowSound);
+  activeThrowSound = null;
+  stopSound("throw.mp3");
+}
+
 function playSound(file, speed = 1) {
   if (!soundPools[file]) {
     soundPoolIndex[file] = 0;
@@ -365,6 +389,7 @@ function playSound(file, speed = 1) {
   sound.playbackRate = speed;
   sound.muted = false;
   sound.play().catch(() => {});
+  return sound;
 }
 
 function hideAllPanels() {
@@ -828,7 +853,7 @@ function checkAnswer() {
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
   } else {
-    playSound("escape.mp3");
+    playSound("wrong.mp3");
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
     message.textContent = "おしい！もういちどがんばれ！";
@@ -838,6 +863,8 @@ function checkAnswer() {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function playBallShakeOnce() {
+  stopThrowSound();
+  stopSound("shake.mp3");
   playSound("shake.mp3");
   ballImg.classList.remove("shake-once");
   ballImg.style.transform = "translate(-50%, -100px) rotate(0deg) scale(1)";
@@ -854,7 +881,8 @@ async function throwBall() {
 
   lockCatchThrow();
   message.textContent = "";
-  playSound("throw.mp3");
+  stopThrowSound();
+  activeThrowSound = playSound("throw.mp3");
   ballImg.style.display = "block";
   ballImg.classList.remove("throw", "shake-3", "shake-once");
   void ballImg.offsetWidth;
@@ -912,7 +940,7 @@ function catchPokemon() {
       throwButton.disabled = false;
     }
     catchResolved = false;
-    playSound("wrong.mp3");
+    playSound("escape.mp3");
     ballImg.style.display = "none";
     pokemonImage.style.display = "block";
     message.textContent = "おしい！もういちどがんばれ！";
@@ -989,6 +1017,9 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
 
 
 
