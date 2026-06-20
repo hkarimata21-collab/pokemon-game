@@ -257,11 +257,25 @@ const soundFiles = [
   "escape.mp3"
 ];
 
+const bgmHomeFile = "オーキド研究所.mp3";
+const bgmFacilityFiles = [
+  "タマムシシティのテーマ.mp3",
+  "殿堂入り.mp3",
+  "ポケモンセンター.mp3",
+  "ハナダシティのテーマ.mp3",
+  "マサラタウンのテーマ.mp3",
+  "グレンタウンのテーマ.mp3"
+];
+
 const soundPools = {};
 const soundPoolIndex = {};
 let crySound = null;
 let activeThrowSound = null;
 let soundsUnlocked = false;
+let bgmAudio = null;
+let currentBgmFile = "";
+let pendingBgmFile = "";
+let lastFacilityBgmFile = "";
 
 soundFiles.forEach(file => {
   soundPoolIndex[file] = 0;
@@ -453,7 +467,40 @@ function playRandomFacilityBgm() {
   lastFacilityBgmFile = file;
   playBgm(file, { restart: true });
 }
+
+async function enterPretendLandscapeMode() {
+  document.body.classList.add("pretendLandscapeOnly");
+
+  try {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (_) {}
+
+  try {
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch (_) {}
+}
+
+function exitPretendLandscapeMode() {
+  document.body.classList.remove("pretendLandscapeOnly");
+
+  try {
+    if (screen.orientation?.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch (_) {}
+
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  } catch (_) {}
+}
 function hideAllPanels() {
+  exitPretendLandscapeMode();
   areaMenu.classList.add("hidden");
   placeholderPanel.classList.add("hidden");
   stickerArea.classList.add("hidden");
@@ -462,6 +509,7 @@ function hideAllPanels() {
 }
 
 function goHome() {
+  exitPretendLandscapeMode();
   playHomeBgm();
   townScreen.classList.remove("hidden");
   areaScreen.classList.add("hidden");
@@ -731,6 +779,7 @@ function syncDexWithOwnedRewards() {
 }
 function openStickerPlay() {
   hideAllPanels();
+  enterPretendLandscapeMode();
   areaMenu.classList.add("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
@@ -1151,6 +1200,7 @@ function loadStickerScene() {
 }
 
 stickerBoard.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
   const sticker = event.target.closest(".sticker");
   if (!sticker) {
     selectSticker(null);
@@ -1178,7 +1228,7 @@ stickerBoard.addEventListener("pointerdown", (event) => {
 stickerBoard.addEventListener("pointermove", (event) => {
   if (!activeSticker) return;
 
-  if (Math.hypot(event.clientX - stickerStartX, event.clientY - stickerStartY) > 6) {
+  if (Math.hypot(event.clientX - stickerStartX, event.clientY - stickerStartY) > 14) {
     stickerDragMoved = true;
   }
 
@@ -1488,6 +1538,8 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
 
 
 

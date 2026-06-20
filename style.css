@@ -1826,7 +1826,7 @@ button[disabled] {
 }
 
 @media (orientation: portrait) and (max-width: 900px) {
-  body::before {
+  body.pretendLandscapeOnly::before {
     content: "横向きにしてね";
     position: fixed;
     inset: 0;
@@ -1843,7 +1843,7 @@ button[disabled] {
       linear-gradient(180deg, #86def7 0 46%, #6ad166 46% 100%);
   }
 
-  body::after {
+  body.pretendLandscapeOnly::after {
     content: "おままごと広場は横画面であそべるよ";
     position: fixed;
     left: 24px;
@@ -1951,3 +1951,29 @@ button[disabled] {
   100% { transform: translateY(0) scale(1); }
 }
 
+
+
+/* Pretend landscape and tap stability */
+body.pretendLandscapeOnly {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.pretendLandscapeOnly .stickerPanel,
+body.pretendLandscapeOnly .stickerBoard {
+  touch-action: none;
+}
+
+body.pretendLandscapeOnly button,
+body.pretendLandscapeOnly .paletteSticker,
+body.pretendLandscapeOnly .bgButton {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.pretendLandscapeOnly .paletteSticker,
+body.pretendLandscapeOnly .bgButton {
+  position: relative;
+  z-index: 35;
+}
