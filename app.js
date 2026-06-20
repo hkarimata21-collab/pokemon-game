@@ -1,4 +1,4 @@
-﻿// ====================
+// ====================
 // ポケモンデータ
 // ====================
 
@@ -232,6 +232,8 @@ const pokemonList = [
 let currentPokemon = null;
 let currentAnswer = 0;
 let catchCount = 0;
+let isCatching = false;
+let catchResolved = false;
 let hintUsed = false;
 let currentA = 0;
 let currentB = 0;
@@ -400,7 +402,7 @@ function getStickerStorageKey(background = currentStickerBackground) {
 function renderStickerChoices() {
   renderPokemonStickerChoices();
   itemStickerTray.innerHTML = stickerItems.map(item => `
-    <button class="paletteSticker" onclick="addItemSticker('${item.id}')" aria-label="${item.label}">
+    <button class="paletteSticker" type="button" onclick="addItemSticker('${item.id}')" aria-label="${item.label}">
       ${item.icon}
     </button>
   `).join("");
@@ -412,15 +414,12 @@ function renderPokemonStickerChoices() {
     .map(no => pokemonList.find(p => p.dexNo === no))
     .filter(Boolean);
 
-  if (ownedPokemon.length === 0) {
-    pokemonStickerTray.innerHTML = `
-      <div class="emptyPaletteMessage">?</div>
-    `;
-    return;
-  }
+  const visiblePokemon = ownedPokemon.length > 0
+    ? ownedPokemon
+    : pokemonList.slice(0, 6);
 
-  pokemonStickerTray.innerHTML = ownedPokemon.map(p => `
-    <button class="paletteSticker" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
+  pokemonStickerTray.innerHTML = visiblePokemon.map(p => `
+    <button class="paletteSticker pokemonPaletteSticker" type="button" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
       <img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">
     </button>
   `).join("");
@@ -713,7 +712,24 @@ function showHint() {
   createQuestion();
 }
 
+function resetCatchLock() {
+  isCatching = false;
+  catchResolved = false;
+  if (window.throwButton) {
+    throwButton.disabled = false;
+  }
+}
+
+function lockCatchThrow() {
+  isCatching = true;
+  catchResolved = false;
+  if (window.throwButton) {
+    throwButton.disabled = true;
+  }
+}
+
 function loadPokemon() {
+  resetCatchLock();
   ballImg.classList.remove("throw", "shake-3");
   ballImg.style.display = "none";
   pokemonImage.style.display = "block";
@@ -747,6 +763,7 @@ function checkAnswer() {
   if (Number(value) === currentAnswer) {
     correctSound.currentTime = 0;
     correctSound.play().catch(() => {});
+    resetCatchLock();
     questionArea.classList.add("hidden");
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
@@ -760,6 +777,9 @@ function checkAnswer() {
 }
 
 function throwBall() {
+  if (isCatching || catchResolved) return;
+
+  lockCatchThrow();
   message.textContent = "";
   playSound("throw.mp3", 2.0);
   ballImg.style.display = "block";
@@ -784,6 +804,7 @@ function throwBall() {
 }
 
 function nextPokemon() {
+  resetCatchLock();
   loadPokemon();
   ballImg.style.display = "none";
   ballImg.classList.remove("shake-3", "throw");
@@ -792,10 +813,18 @@ function nextPokemon() {
 }
 
 function catchPokemon() {
+  if (!isCatching || catchResolved) return;
+
+  catchResolved = true;
+  isCatching = false;
+
   catchCount++;
   const success = catchCount >= 3 || Math.random() * 100 < catchCount * 33.3333;
 
   if (success) {
+    if (window.throwButton) {
+      throwButton.disabled = true;
+    }
     playSound("catch.mp3");
     savePokemon();
     catchCount = 0;
@@ -808,6 +837,10 @@ function catchPokemon() {
     catchArea.classList.add("hidden");
     nextArea.classList.remove("hidden");
   } else {
+    if (window.throwButton) {
+      throwButton.disabled = false;
+    }
+    catchResolved = false;
     playSound("escape.mp3", 2.5);
     ballImg.style.display = "none";
     pokemonImage.style.display = "block";
@@ -885,6 +918,9 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
 
 
 

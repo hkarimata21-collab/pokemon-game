@@ -1423,3 +1423,252 @@ p {
 .paletteSticker {
   touch-action: manipulation;
 }
+
+/* Palette and board fixes */
+#stickerBoard.stickerBoard {
+  min-height: clamp(430px, 56vh, 620px);
+  background: #c7f0ff;
+}
+
+#stickerBoard.boardForest {
+  background:
+    radial-gradient(circle at 18% 30%, #3e9a5c 0 8%, transparent 9%),
+    radial-gradient(circle at 78% 28%, #2f8253 0 9%, transparent 10%),
+    linear-gradient(180deg, #8fdcff 0 42%, #6ad166 42% 100%);
+}
+
+#stickerBoard.boardSea {
+  background:
+    linear-gradient(180deg, #8ee8ff 0 43%, #50c2e8 43% 61%, #ffe08a 61% 100%);
+}
+
+#stickerBoard.boardPark {
+  background:
+    linear-gradient(180deg, #91dcff 0 45%, #70d868 45% 100%);
+}
+
+#stickerBoard.boardTown {
+  background:
+    linear-gradient(180deg, #91dcff 0 42%, #6bd569 42% 100%);
+}
+
+#stickerBoard.boardHome {
+  background:
+    linear-gradient(180deg, #ffd7ec 0 45%, #f8f1ff 45% 46%, #ffeec9 46% 100%);
+}
+
+.bottomPalette {
+  position: relative;
+  bottom: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  scrollbar-width: thin;
+}
+
+.paletteRow {
+  display: contents;
+}
+
+.paletteSticker,
+.emptyPaletteMessage {
+  flex: 0 0 64px;
+}
+
+.paletteSticker {
+  width: 64px;
+  height: 60px;
+  min-width: 64px;
+  min-height: 60px;
+}
+
+.pokemonPaletteSticker {
+  background: #eff8ff;
+  border-color: #9edbff;
+}
+
+.pokemonPaletteSticker img {
+  width: 54px;
+  height: 54px;
+}
+
+.sticker {
+  pointer-events: auto;
+}
+
+.pokemonSticker {
+  min-width: 78px;
+  min-height: 78px;
+}
+
+@media (max-width: 760px) {
+  .bottomPalette {
+    margin-left: -4px;
+    margin-right: -4px;
+    width: calc(100% + 8px);
+  }
+}
+
+/* iPhone/iPad palette stabilization */
+.stickerPanel {
+  overflow: visible;
+}
+
+.bottomPalette {
+  position: sticky;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 30;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 -4px 18px rgba(31, 49, 56, 0.14);
+}
+
+.paletteRow {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  min-width: max-content;
+  margin-right: 10px;
+  vertical-align: top;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.paletteSticker,
+.emptyPaletteMessage {
+  flex: 0 0 auto;
+}
+
+.paletteSticker {
+  width: 64px;
+  min-width: 64px;
+  height: 60px;
+  min-height: 60px;
+  padding: 4px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 34px;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.paletteSticker img {
+  display: block;
+  width: 54px;
+  height: 54px;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.pokemonPaletteSticker {
+  background: #eff8ff;
+  border: 2px solid #9edbff;
+}
+
+.itemSticker {
+  background: transparent;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .bottomPalette {
+    position: relative;
+    bottom: auto;
+  }
+
+  .stickerBoard {
+    min-height: min(58vh, 520px);
+  }
+}
+
+@media (max-width: 760px) {
+  .stickerPanel {
+    padding: 8px 6px;
+  }
+
+  .bottomPalette {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .paletteSticker {
+    width: 60px;
+    min-width: 60px;
+    height: 58px;
+    min-height: 58px;
+  }
+}
+
+/* Catch spam guard */
+button:disabled,
+button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none;
+  filter: grayscale(0.25);
+}
+
+#throwButton:disabled {
+  background: #dce4ea;
+  color: #6f7f86;
+}
+
+/* Throw timing tuned to throw.mp3 */
+.throw {
+  display: block !important;
+  animation: throwBall 1.2s cubic-bezier(0.16, 0.9, 0.24, 1) forwards;
+}
+
+@keyframes throwBall {
+  0% {
+    transform: translate(-230px, 110px) rotate(0deg) scale(0.92);
+  }
+
+  12.5% {
+    transform: translate(-170px, 42px) rotate(130deg) scale(1.03);
+  }
+
+  55% {
+    transform: translate(-85px, -155px) rotate(520deg) scale(1.08);
+  }
+
+  100% {
+    transform: translate(-50%, -100px) rotate(760deg) scale(1);
+  }
+}
+
+.shake-once {
+  animation: shakeOnce 0.42s ease-in-out 1;
+}
+
+@keyframes shakeOnce {
+  0% { transform: translate(-50%, -100px) rotate(0deg) scale(1); }
+  22% { transform: translate(calc(-50% - 14px), -100px) rotate(-14deg) scale(1.04); }
+  48% { transform: translate(calc(-50% + 14px), -100px) rotate(14deg) scale(1.04); }
+  74% { transform: translate(calc(-50% - 8px), -100px) rotate(-8deg) scale(1.02); }
+  100% { transform: translate(-50%, -100px) rotate(0deg) scale(1); }
+}
