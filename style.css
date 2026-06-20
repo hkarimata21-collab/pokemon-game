@@ -1672,3 +1672,86 @@ button[disabled] {
   74% { transform: translate(calc(-50% - 8px), -100px) rotate(-8deg) scale(1.02); }
   100% { transform: translate(-50%, -100px) rotate(0deg) scale(1); }
 }
+
+/* Throw retune: shake starts at 2.00s */
+.shake-once {
+  animation: shakeOnce 0.42s ease-in-out 1 !important;
+}
+
+@keyframes shakeOnce {
+  0% { transform: translate(-50%, -100px) rotate(0deg) scale(1); }
+  18% { transform: translate(calc(-50% - 18px), -100px) rotate(-16deg) scale(1.05); }
+  42% { transform: translate(calc(-50% + 18px), -100px) rotate(16deg) scale(1.05); }
+  68% { transform: translate(calc(-50% - 10px), -100px) rotate(-9deg) scale(1.02); }
+  100% { transform: translate(-50%, -100px) rotate(0deg) scale(1); }
+}
+
+/* Natural Pokeball motion */
+.throw {
+  display: block !important;
+  animation: throwBall 1.2s cubic-bezier(0.18, 0.82, 0.28, 1) forwards;
+  transform-origin: 50% 62%;
+}
+
+@keyframes throwBall {
+  0% {
+    transform: translate(-245px, 118px) rotate(-30deg) scale(0.9);
+    animation-timing-function: cubic-bezier(0.08, 0.78, 0.18, 1);
+  }
+
+  12% {
+    transform: translate(-172px, 18px) rotate(135deg) scale(1);
+    animation-timing-function: ease-out;
+  }
+
+  46% {
+    transform: translate(-84px, -190px) rotate(430deg) scale(1.06);
+    animation-timing-function: cubic-bezier(0.48, 0, 0.9, 0.58);
+  }
+
+  80% {
+    transform: translate(-50%, -108px) rotate(700deg) scale(1.02);
+    animation-timing-function: ease-in;
+  }
+
+  90% {
+    transform: translate(-50%, -92px) rotate(735deg) scale(1.12, 0.82);
+    animation-timing-function: ease-out;
+  }
+
+  96% {
+    transform: translate(-50%, -106px) rotate(750deg) scale(0.94, 1.08);
+    animation-timing-function: ease-in-out;
+  }
+
+  100% {
+    transform: translate(-50%, -100px) rotate(760deg) scale(1);
+  }
+}
+
+.shake-once {
+  transform-origin: 50% 82%;
+  animation: shakeOnce 0.5s cubic-bezier(0.22, 0.9, 0.28, 1) 1 !important;
+}
+
+@keyframes shakeOnce {
+  0% {
+    transform: translate(-50%, -100px) rotate(0deg) scale(1);
+  }
+
+  18% {
+    transform: translate(calc(-50% - 7px), -98px) rotate(-21deg) scale(1.04, 0.97);
+  }
+
+  42% {
+    transform: translate(calc(-50% + 9px), -100px) rotate(17deg) scale(1.02);
+  }
+
+  68% {
+    transform: translate(calc(-50% - 4px), -99px) rotate(-9deg) scale(1.01);
+  }
+
+  100% {
+    transform: translate(-50%, -100px) rotate(0deg) scale(1);
+  }
+}

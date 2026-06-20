@@ -1,4 +1,4 @@
-// ====================
+﻿// ====================
 // ポケモンデータ
 // ====================
 
@@ -244,8 +244,45 @@ let stickerDragMoved = false;
 let stickerOffsetX = 0;
 let stickerOffsetY = 0;
 
-const correctSound = new Audio("correct.mp3");
-const wrongSound = new Audio("wrong.mp3");
+const soundFiles = [
+  "correct.mp3",
+  "wrong.mp3",
+  "throw.mp3",
+  "shake.mp3",
+  "get.mp3"
+];
+
+const soundPools = {};
+const soundPoolIndex = {};
+let crySound = null;
+
+soundFiles.forEach(file => {
+  soundPoolIndex[file] = 0;
+  soundPools[file] = Array.from({ length: 4 }, () => {
+    const audio = new Audio(file);
+    audio.preload = "auto";
+    audio.volume = 1.0;
+    return audio;
+  });
+});
+
+function unlockSoundsOnce() {
+  soundFiles.forEach(file => {
+    const audio = soundPools[file][0];
+    audio.muted = true;
+    audio.play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+      })
+      .catch(() => {
+        audio.muted = false;
+      });
+  });
+}
+
+window.addEventListener("pointerdown", unlockSoundsOnce, { once: true });
 
 const areaData = {
   math: {
@@ -295,15 +332,38 @@ function getPokemonImage(id) {
 }
 
 function playCry(id) {
-  const cry = new Audio(`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`);
-  cry.volume = 1.0;
-  cry.play().catch(() => {});
+  if (!crySound) {
+    crySound = new Audio();
+    crySound.volume = 1.0;
+    crySound.preload = "auto";
+  }
+
+  crySound.pause();
+  crySound.src = `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`;
+  crySound.currentTime = 0;
+  crySound.play().catch(() => {});
 }
 
 function playSound(file, speed = 1) {
-  const sound = new Audio(file);
+  if (!soundPools[file]) {
+    soundPoolIndex[file] = 0;
+    soundPools[file] = Array.from({ length: 2 }, () => {
+      const audio = new Audio(file);
+      audio.preload = "auto";
+      return audio;
+    });
+  }
+
+  const pool = soundPools[file];
+  const index = soundPoolIndex[file] % pool.length;
+  const sound = pool[index];
+  soundPoolIndex[file] = index + 1;
+
+  sound.pause();
+  sound.currentTime = 0;
   sound.volume = 1.0;
   sound.playbackRate = speed;
+  sound.muted = false;
   sound.play().catch(() => {});
 }
 
@@ -730,7 +790,8 @@ function lockCatchThrow() {
 
 function loadPokemon() {
   resetCatchLock();
-  ballImg.classList.remove("throw", "shake-3");
+  ballImg.classList.remove("throw", "shake-3", "shake-once");
+  ballImg.style.transform = "";
   ballImg.style.display = "none";
   pokemonImage.style.display = "block";
   catchEffect.classList.remove("catch-show");
@@ -761,53 +822,63 @@ function checkAnswer() {
   if (value === "") return;
 
   if (Number(value) === currentAnswer) {
-    correctSound.currentTime = 0;
-    correctSound.play().catch(() => {});
+    playSound("correct.mp3");
     resetCatchLock();
     questionArea.classList.add("hidden");
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
   } else {
-    wrongSound.currentTime = 0;
-    wrongSound.play().catch(() => {});
+    playSound("wrong.mp3");
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
     message.textContent = "おしい！もういちどがんばれ！";
   }
 }
 
-function throwBall() {
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function playBallShakeOnce() {
+  playSound("shake.mp3");
+  ballImg.classList.remove("shake-once");
+  ballImg.style.transform = "translate(-50%, -100px) rotate(0deg) scale(1)";
+  void ballImg.offsetWidth;
+  ballImg.classList.add("shake-once");
+  await wait(500);
+  ballImg.classList.remove("shake-once");
+  ballImg.style.transform = "translate(-50%, -100px) rotate(0deg) scale(1)";
+  await wait(200);
+}
+
+async function throwBall() {
   if (isCatching || catchResolved) return;
 
   lockCatchThrow();
   message.textContent = "";
-  playSound("throw.mp3", 2.0);
+  playSound("throw.mp3");
   ballImg.style.display = "block";
-  ballImg.classList.remove("throw", "shake-3");
+  ballImg.classList.remove("throw", "shake-3", "shake-once");
   void ballImg.offsetWidth;
   ballImg.classList.add("throw");
 
-  setTimeout(() => {
-    playSound("shake.mp3", 1.2);
-    setTimeout(() => playSound("shake.mp3", 1.2), 1000);
-    setTimeout(() => playSound("shake.mp3", 1.2), 2000);
-    ballImg.classList.add("shake-3");
-  }, 1000);
+  await wait(1350);
+  pokemonImage.style.display = "none";
 
-  setTimeout(() => {
-    pokemonImage.style.display = "none";
-  }, 1000);
+  await wait(650);
+  ballImg.classList.remove("throw");
+  ballImg.style.transform = "translate(-50%, -100px) rotate(0deg) scale(1)";
+  for (let i = 0; i < 3; i++) {
+    await playBallShakeOnce();
+  }
 
-  setTimeout(() => {
-    catchPokemon();
-  }, 4100);
+  catchPokemon();
 }
 
 function nextPokemon() {
   resetCatchLock();
   loadPokemon();
   ballImg.style.display = "none";
-  ballImg.classList.remove("shake-3", "throw");
+  ballImg.classList.remove("shake-3", "throw", "shake-once");
+  ballImg.style.transform = "";
   catchArea.classList.add("hidden");
   nextArea.classList.add("hidden");
 }
@@ -825,13 +896,13 @@ function catchPokemon() {
     if (window.throwButton) {
       throwButton.disabled = true;
     }
-    playSound("catch.mp3");
+    playSound("get.mp3");
     savePokemon();
     catchCount = 0;
     catchEffect.classList.remove("catch-show");
     void catchEffect.offsetWidth;
     catchEffect.classList.add("catch-show");
-    setTimeout(() => playSound("get.mp3"), 500);
+
     message.textContent = "";
     questionArea.classList.add("hidden");
     catchArea.classList.add("hidden");
@@ -841,7 +912,7 @@ function catchPokemon() {
       throwButton.disabled = false;
     }
     catchResolved = false;
-    playSound("escape.mp3", 2.5);
+    playSound("wrong.mp3");
     ballImg.style.display = "none";
     pokemonImage.style.display = "block";
     message.textContent = "おしい！もういちどがんばれ！";
@@ -918,6 +989,10 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
+
 
 
 
