@@ -1116,3 +1116,310 @@ p {
     min-height: 430px;
   }
 }
+
+/* Sticker spec v2 */
+.stickerPanel {
+  width: min(1120px, 100%);
+  padding: 12px;
+}
+
+.stickerTopbar {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.86);
+  backdrop-filter: blur(8px);
+}
+
+.stickerToolButton {
+  width: 56px;
+  height: 52px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+}
+
+.backgroundPicker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(52px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bgButton {
+  min-height: 56px;
+  padding: 0;
+  font-size: 28px;
+  background: #fff;
+  border: 3px solid #dce4ea;
+  box-shadow: 0 4px 0 rgba(44, 110, 167, 0.14);
+}
+
+.bgButton.isActive {
+  border-color: #ffcb05;
+  background: #fff6bf;
+}
+
+.stickerBoard {
+  position: relative;
+  min-height: clamp(430px, 56vh, 620px);
+  overflow: hidden;
+  border-radius: 8px;
+  border: 4px solid #8cc36f;
+  box-shadow: inset 0 0 0 4px rgba(255,255,255,0.34);
+}
+
+.boardForest {
+  background:
+    radial-gradient(circle at 18% 30%, #3e9a5c 0 8%, transparent 9%),
+    radial-gradient(circle at 78% 28%, #2f8253 0 9%, transparent 10%),
+    linear-gradient(180deg, #8fdcff 0 42%, #6ad166 42% 100%);
+}
+
+.boardForest::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 18%;
+  height: 18%;
+  border-radius: 50%;
+  background: rgba(74, 154, 76, 0.48);
+}
+
+.boardForest::after {
+  content: "🌲 🌼 🌲";
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 30%;
+  font-size: clamp(34px, 6vw, 62px);
+}
+
+.boardSea {
+  background:
+    linear-gradient(180deg, #8ee8ff 0 43%, #50c2e8 43% 61%, #ffe08a 61% 100%);
+}
+
+.boardSea::before {
+  content: "";
+  position: absolute;
+  left: -5%;
+  top: 50%;
+  width: 110%;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+}
+
+.boardSea::after {
+  content: "☀️";
+  position: absolute;
+  right: 9%;
+  top: 7%;
+  font-size: clamp(46px, 8vw, 82px);
+}
+
+.boardTown {
+  background:
+    linear-gradient(180deg, #91dcff 0 42%, #6bd569 42% 100%);
+}
+
+.boardTown::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 44%;
+  height: 70px;
+  border-radius: 999px;
+  background: #5f8f99;
+  border: 7px solid #84c3bd;
+}
+
+.boardTown::after {
+  content: "🏫 🏪 🏠";
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 24%;
+  font-size: clamp(42px, 8vw, 76px);
+}
+
+.boardHome {
+  background:
+    linear-gradient(180deg, #ffd7ec 0 45%, #f8f1ff 45% 46%, #ffeec9 46% 100%);
+}
+
+.boardHome::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  bottom: 20%;
+  width: 34%;
+  height: 22%;
+  border-radius: 8px 8px 24px 24px;
+  background: #9fdcff;
+  box-shadow: inset 0 18px 0 #fff, 0 8px 0 rgba(0,0,0,0.1);
+}
+
+.boardHome::after {
+  content: "🪟";
+  position: absolute;
+  right: 12%;
+  top: 18%;
+  font-size: clamp(48px, 8vw, 78px);
+}
+
+.bottomPalette {
+  position: sticky;
+  bottom: 8px;
+  z-index: 18;
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 3px solid rgba(255,255,255,0.8);
+  box-shadow: 0 -4px 18px rgba(31, 49, 56, 0.12);
+}
+
+.paletteRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+}
+
+.paletteRow::-webkit-scrollbar {
+  display: none;
+}
+
+.paletteSticker {
+  flex: 0 0 62px;
+  width: 62px;
+  height: 58px;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff;
+  border: 2px solid #e2edf2;
+  font-size: 34px;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.08);
+}
+
+.paletteSticker img {
+  width: 50px;
+  height: 50px;
+  image-rendering: pixelated;
+}
+
+.emptyPaletteMessage {
+  flex: 0 0 62px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff8d8;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.sticker {
+  position: absolute;
+  min-width: 60px;
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.78);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.16);
+  cursor: grab;
+  z-index: 4;
+  transform-origin: center;
+  touch-action: none;
+}
+
+.sticker.isSelected {
+  outline: 4px solid #ffcb05;
+  outline-offset: 4px;
+  z-index: 10;
+}
+
+.sticker img {
+  width: 70px;
+  height: 70px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.itemSticker {
+  font-size: 44px;
+}
+
+@media (max-width: 760px) {
+  .stickerPanel {
+    padding: 8px;
+  }
+
+  .stickerTopbar {
+    gap: 6px;
+  }
+
+  .stickerToolButton {
+    width: 50px;
+    height: 48px;
+    font-size: 19px;
+  }
+
+  .backgroundPicker {
+    gap: 6px;
+  }
+
+  .bgButton {
+    min-height: 50px;
+  }
+
+  .paletteSticker {
+    flex-basis: 58px;
+    width: 58px;
+    height: 56px;
+  }
+}
+
+/* Sticker spec polish */
+.sticker {
+  background: transparent;
+  box-shadow: none;
+}
+
+.sticker.isSelected {
+  outline: 4px solid #ffcb05;
+  outline-offset: 2px;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 8px rgba(31, 49, 56, 0.18));
+}
+
+.pokemonSticker img {
+  width: 78px;
+  height: 78px;
+}
+
+.itemSticker {
+  text-shadow:
+    0 2px 0 rgba(255,255,255,0.95),
+    0 4px 8px rgba(31,49,56,0.22);
+}
+
+.paletteSticker {
+  touch-action: manipulation;
+}

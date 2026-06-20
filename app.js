@@ -236,6 +236,9 @@ let hintUsed = false;
 let currentA = 0;
 let currentB = 0;
 let activeSticker = null;
+let selectedSticker = null;
+let currentStickerBackground = "forest";
+let stickerDragMoved = false;
 let stickerOffsetX = 0;
 let stickerOffsetY = 0;
 
@@ -366,22 +369,39 @@ function showRewards() {
   placeholderPanel.classList.remove("hidden");
 }
 
-const itemStickers = ["⭐", "🍎", "🍰", "🍩", "🍦", "🧃", "🧸", "🎀", "🛋️", "🪑", "🪴", "📚", "⚽", "🎈", "☂️", "🧺"];
+const stickerItems = [
+  { id: "tree", icon: "🌳", label: "木" },
+  { id: "flower", icon: "🌸", label: "花" },
+  { id: "rock", icon: "🪨", label: "岩" },
+  { id: "bench", icon: "🪑", label: "ベンチ" },
+  { id: "house", icon: "🏠", label: "家" },
+  { id: "food", icon: "🍰", label: "食べ物" },
+  { id: "ball", icon: "🔴", label: "モンスターボール" },
+  { id: "apple", icon: "🍎", label: "りんご" },
+  { id: "bear", icon: "🧸", label: "ぬいぐるみ" },
+  { id: "ribbon", icon: "🎀", label: "リボン" }
+];
+
+const stickerBackgrounds = ["forest", "sea", "park", "town", "home"];
 
 function openStickerPlay() {
   hideAllPanels();
-  areaMenu.classList.remove("hidden");
+  areaMenu.classList.add("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
-  const savedBackground = localStorage.getItem("stickerBackground") || "room";
-  setStickerBackground(savedBackground);
+  const savedBackground = localStorage.getItem("stickerBackground") || "forest";
+  setStickerBackground(savedBackground, { saveCurrent: false });
+}
+
+function getStickerStorageKey(background = currentStickerBackground) {
+  return `stickerScene:${background}`;
 }
 
 function renderStickerChoices() {
   renderPokemonStickerChoices();
-  itemStickerTray.innerHTML = itemStickers.map(item => `
-    <button class="stickerChoice" onclick="addItemSticker('${item}')" aria-label="${item}">
-      ${item}
+  itemStickerTray.innerHTML = stickerItems.map(item => `
+    <button class="paletteSticker" onclick="addItemSticker('${item.id}')" aria-label="${item.label}">
+      ${item.icon}
     </button>
   `).join("");
 }
@@ -394,68 +414,222 @@ function renderPokemonStickerChoices() {
 
   if (ownedPokemon.length === 0) {
     pokemonStickerTray.innerHTML = `
-      <div class="emptyStickerMessage">
-        足し算でポケモンをゲットすると、ここにステッカーがふえるよ。
-      </div>
+      <div class="emptyPaletteMessage">?</div>
     `;
     return;
   }
 
   pokemonStickerTray.innerHTML = ownedPokemon.map(p => `
-    <button class="stickerChoice" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
+    <button class="paletteSticker" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
       <img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">
     </button>
   `).join("");
 }
 
-function setStickerBackground(name) {
-  stickerBoard.classList.remove("boardRoom", "boardBeach", "boardPark", "boardNight");
-  stickerBoard.classList.add(`board${name.charAt(0).toUpperCase()}${name.slice(1)}`);
+function setStickerBackground(name, options = {}) {
+  const shouldSaveCurrent = options.saveCurrent !== false;
+
+  if (!stickerBackgrounds.includes(name)) {
+    name = "forest";
+  }
+
+  if (shouldSaveCurrent) {
+    saveStickerScene();
+  }
+  currentStickerBackground = name;
   localStorage.setItem("stickerBackground", name);
+  selectedSticker = null;
+
+  stickerBoard.classList.remove(
+    "boardForest",
+    "boardSea",
+    "boardPark",
+    "boardTown",
+    "boardHome"
+  );
+  stickerBoard.classList.add(`board${name.charAt(0).toUpperCase()}${name.slice(1)}`);
+
+  document.querySelectorAll(".bgButton").forEach(button => {
+    button.classList.toggle("isActive", button.getAttribute("onclick").includes(`'${name}'`));
+  });
+
+  loadStickerScene();
 }
 
 function addSticker(mark) {
   addItemSticker(mark);
 }
 
-function addItemSticker(mark) {
-  createSticker({ type: "item", content: mark });
+function addItemSticker(itemId) {
+  const item = stickerItems.find(x => x.id === itemId) || { id: itemId, icon: itemId, label: itemId };
+  createSticker({
+    type: "item",
+    itemId: item.id,
+    content: item.icon,
+    label: item.label
+  });
 }
 
 function addPokemonSticker(dexNo) {
   const p = pokemonList.find(x => x.dexNo === dexNo);
   if (!p) return;
+
   createSticker({
     type: "pokemon",
+    dexNo: p.dexNo,
+    pokemonId: p.pokemonId,
     content: getPokemonImage(p.pokemonId),
     label: p.name
   });
 }
 
-function createSticker(stickerData) {
+function createSticker(stickerData, savedState = null, shouldSave = true) {
   const sticker = document.createElement("button");
   sticker.className = `sticker ${stickerData.type === "item" ? "itemSticker" : "pokemonSticker"}`;
   sticker.type = "button";
-  sticker.style.left = `${18 + Math.random() * 52}%`;
-  sticker.style.top = `${18 + Math.random() * 52}%`;
+  sticker.dataset.type = stickerData.type;
+  sticker.dataset.scale = savedState?.scale || "1";
+  sticker.dataset.rotation = savedState?.rotation || "0";
 
   if (stickerData.type === "pokemon") {
+    sticker.dataset.dexNo = stickerData.dexNo;
+    sticker.dataset.pokemonId = stickerData.pokemonId;
+    sticker.dataset.label = stickerData.label || "";
     sticker.innerHTML = `<img src="${stickerData.content}" alt="${stickerData.label || "ポケモン"}">`;
   } else {
+    sticker.dataset.itemId = stickerData.itemId || stickerData.content;
+    sticker.dataset.content = stickerData.content;
+    sticker.dataset.label = stickerData.label || "";
     sticker.textContent = stickerData.content;
   }
 
+  if (savedState) {
+    sticker.style.left = `${savedState.x}%`;
+    sticker.style.top = `${savedState.y}%`;
+  } else {
+    sticker.style.left = `${22 + Math.random() * 44}%`;
+    sticker.style.top = `${20 + Math.random() * 44}%`;
+  }
+
+  updateStickerTransform(sticker);
   stickerBoard.appendChild(sticker);
+
+  if (shouldSave) {
+    selectSticker(sticker);
+    saveStickerScene();
+  }
+}
+
+function selectSticker(sticker) {
+  if (selectedSticker) {
+    selectedSticker.classList.remove("isSelected");
+  }
+
+  selectedSticker = sticker;
+
+  if (selectedSticker) {
+    selectedSticker.classList.add("isSelected");
+  }
+}
+
+function updateStickerTransform(sticker) {
+  const scale = Number(sticker.dataset.scale || 1);
+  const rotation = Number(sticker.dataset.rotation || 0);
+  sticker.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+}
+
+function deleteSelectedSticker() {
+  if (!selectedSticker) return;
+  selectedSticker.remove();
+  selectedSticker = null;
+  saveStickerScene();
+}
+
+function scaleSelectedSticker(multiplier) {
+  if (!selectedSticker) return;
+  const nextScale = Math.max(0.55, Math.min(2.3, Number(selectedSticker.dataset.scale || 1) * multiplier));
+  selectedSticker.dataset.scale = nextScale.toFixed(2);
+  updateStickerTransform(selectedSticker);
+  saveStickerScene();
+}
+
+function rotateSelectedSticker() {
+  if (!selectedSticker) return;
+  selectedSticker.dataset.rotation = String((Number(selectedSticker.dataset.rotation || 0) + 15) % 360);
+  updateStickerTransform(selectedSticker);
+  saveStickerScene();
 }
 
 function clearStickers() {
   stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.remove());
+  selectedSticker = null;
+  saveStickerScene();
+}
+
+function saveStickerScene() {
+  if (!window.stickerBoard || !currentStickerBackground) return;
+
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const stickers = [...stickerBoard.querySelectorAll(".sticker")].map(sticker => {
+    const left = parseFloat(sticker.style.left) || 0;
+    const top = parseFloat(sticker.style.top) || 0;
+    return {
+      type: sticker.dataset.type,
+      itemId: sticker.dataset.itemId || "",
+      content: sticker.dataset.content || "",
+      dexNo: Number(sticker.dataset.dexNo || 0),
+      pokemonId: Number(sticker.dataset.pokemonId || 0),
+      label: sticker.dataset.label || "",
+      x: Math.max(0, Math.min(100, left)),
+      y: Math.max(0, Math.min(100, top)),
+      scale: Number(sticker.dataset.scale || 1),
+      rotation: Number(sticker.dataset.rotation || 0)
+    };
+  });
+
+  localStorage.setItem(getStickerStorageKey(), JSON.stringify(stickers));
+}
+
+function loadStickerScene() {
+  stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.remove());
+  selectedSticker = null;
+
+  const saved = JSON.parse(localStorage.getItem(getStickerStorageKey()) || "[]");
+  saved.forEach(sticker => {
+    if (sticker.type === "pokemon") {
+      createSticker({
+        type: "pokemon",
+        dexNo: sticker.dexNo,
+        pokemonId: sticker.pokemonId,
+        content: getPokemonImage(sticker.pokemonId),
+        label: sticker.label
+      }, sticker, false);
+    } else {
+      const item = stickerItems.find(x => x.id === sticker.itemId);
+      createSticker({
+        type: "item",
+        itemId: sticker.itemId,
+        content: sticker.content || item?.icon || "⭐",
+        label: sticker.label || item?.label || ""
+      }, sticker, false);
+    }
+  });
+
+  selectedSticker = null;
+  stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.classList.remove("isSelected"));
 }
 
 stickerBoard.addEventListener("pointerdown", (event) => {
   const sticker = event.target.closest(".sticker");
-  if (!sticker) return;
+  if (!sticker) {
+    selectSticker(null);
+    return;
+  }
+
   activeSticker = sticker;
+  stickerDragMoved = false;
+  selectSticker(sticker);
+
   const rect = sticker.getBoundingClientRect();
   stickerOffsetX = event.clientX - rect.left;
   stickerOffsetY = event.clientY - rect.top;
@@ -464,15 +638,27 @@ stickerBoard.addEventListener("pointerdown", (event) => {
 
 stickerBoard.addEventListener("pointermove", (event) => {
   if (!activeSticker) return;
+
   const boardRect = stickerBoard.getBoundingClientRect();
   const x = event.clientX - boardRect.left - stickerOffsetX;
   const y = event.clientY - boardRect.top - stickerOffsetY;
-  activeSticker.style.left = `${Math.max(0, Math.min(x, boardRect.width - activeSticker.offsetWidth))}px`;
-  activeSticker.style.top = `${Math.max(0, Math.min(y, boardRect.height - activeSticker.offsetHeight))}px`;
+  const maxX = boardRect.width - activeSticker.offsetWidth;
+  const maxY = boardRect.height - activeSticker.offsetHeight;
+  const clampedX = Math.max(0, Math.min(x, maxX));
+  const clampedY = Math.max(0, Math.min(y, maxY));
+
+  activeSticker.style.left = `${(clampedX / boardRect.width) * 100}%`;
+  activeSticker.style.top = `${(clampedY / boardRect.height) * 100}%`;
+  stickerDragMoved = true;
 });
 
 stickerBoard.addEventListener("pointerup", () => {
+  if (activeSticker) {
+    saveStickerScene();
+  }
+
   activeSticker = null;
+  stickerDragMoved = false;
 });
 
 function startAdditionGame() {
@@ -699,5 +885,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
 
 
