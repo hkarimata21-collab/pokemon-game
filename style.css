@@ -1755,3 +1755,199 @@ button[disabled] {
     transform: translate(-50%, -100px) rotate(0deg) scale(1);
   }
 }
+
+/* Reward system */
+#message {
+  white-space: pre-line;
+}
+
+.bgButton[hidden] {
+  display: none !important;
+}
+
+/* Landscape-first play style */
+@media (orientation: landscape) {
+  .screen {
+    width: min(1280px, 100%);
+    min-height: 100dvh;
+    padding: 10px 14px;
+  }
+
+  .townHeader {
+    margin-bottom: 8px;
+  }
+
+  .townHeader h1,
+  .appHeader h1 {
+    font-size: clamp(26px, 4vw, 44px);
+  }
+
+  .appHeader {
+    margin-bottom: 8px;
+  }
+
+  .townScene {
+    height: min(62vh, 520px);
+  }
+
+  .homeDexPanel {
+    margin-top: 10px;
+  }
+
+  .stickerPanel {
+    width: min(1280px, 100%);
+    padding: 8px;
+  }
+
+  .stickerTopbar {
+    position: relative;
+    top: auto;
+    margin-bottom: 6px;
+    padding: 6px;
+  }
+
+  .backgroundPicker {
+    grid-template-columns: repeat(5, 58px);
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+
+  .stickerBoard {
+    min-height: calc(100dvh - 220px);
+    height: calc(100dvh - 220px);
+  }
+
+  .bottomPalette {
+    position: relative;
+    bottom: auto;
+    margin-top: 6px;
+    padding: 8px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+  body::before {
+    content: "横向きにしてね";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: #263238;
+    font-size: clamp(26px, 8vw, 48px);
+    font-weight: 900;
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% 28%, #ffe850 0 54px, transparent 56px),
+      linear-gradient(180deg, #86def7 0 46%, #6ad166 46% 100%);
+  }
+
+  body::after {
+    content: "おままごと広場は横画面であそべるよ";
+    position: fixed;
+    left: 24px;
+    right: 24px;
+    top: calc(50% + 54px);
+    z-index: 10000;
+    color: #17654d;
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+  }
+}
+
+/* Pretend-play feel */
+.sticker {
+  touch-action: none;
+  will-change: left, top, transform;
+  transition: transform 160ms cubic-bezier(0.2, 0.9, 0.25, 1.2), filter 160ms ease;
+}
+
+.sticker.isDragging {
+  z-index: 50;
+  filter: drop-shadow(0 14px 16px rgba(38, 64, 78, 0.24));
+  transition: filter 120ms ease;
+}
+
+.sticker.landed {
+  animation: stickerLand 320ms cubic-bezier(0.2, 0.9, 0.25, 1.2);
+}
+
+.pokemonSticker.tapBounce {
+  animation: pokemonTapBounce 520ms ease-out;
+}
+
+.pokemonSticker::after {
+  content: attr(data-bubble);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 10px);
+  transform: translateX(-50%) scale(0);
+  min-width: 44px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #315764;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 4px 12px rgba(67, 103, 121, 0.18);
+}
+
+.pokemonSticker[data-bubble]:not([data-bubble=""])::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  transition: transform 180ms cubic-bezier(0.2, 1.2, 0.28, 1), opacity 140ms ease;
+}
+
+.pokemonSticker.isSleeping img {
+  filter: saturate(0.9) brightness(1.05);
+}
+
+.pokemonSticker.isEating img,
+.pokemonSticker.isHealing img,
+.pokemonSticker.isLearning img {
+  animation: pokemonTinyWiggle 820ms ease-in-out infinite;
+}
+
+.pokemonSticker.isHappy img {
+  animation: pokemonHappyHop 520ms ease-out;
+}
+
+.itemSticker[data-item-id="bed"],
+.itemSticker[data-item-id="chair"],
+.itemSticker[data-item-id="sofa"],
+.itemSticker[data-category="food"],
+.itemSticker[data-item-id="center"],
+.itemSticker[data-item-id="school"] {
+  filter: drop-shadow(0 7px 8px rgba(52, 89, 97, 0.14));
+}
+
+@keyframes stickerLand {
+  0% { transform: var(--rest-transform) translateY(4px) scale(1.08, 0.92); }
+  54% { transform: var(--rest-transform) translateY(-5px) scale(0.96, 1.08); }
+  100% { transform: var(--rest-transform); }
+}
+
+@keyframes pokemonTapBounce {
+  0% { transform: var(--rest-transform); }
+  34% { transform: var(--rest-transform) translateY(-18px) scale(1.08); }
+  70% { transform: var(--rest-transform) translateY(4px); }
+  100% { transform: var(--rest-transform); }
+}
+
+@keyframes pokemonTinyWiggle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  42% { transform: rotate(-4deg) translateY(-2px); }
+  68% { transform: rotate(3deg) translateY(1px); }
+}
+
+@keyframes pokemonHappyHop {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-12px) scale(1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+
