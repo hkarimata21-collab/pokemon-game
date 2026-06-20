@@ -291,29 +291,22 @@ function createSound(file) {
 }
 
 function unlockSoundsOnce() {
-  if (soundsUnlocked) return;
   soundsUnlocked = true;
+  resumePendingBgm();
+}
 
-  soundFiles.forEach(file => {
-    const audio = soundPools[file][0];
-    audio.muted = true;
-    audio.currentTime = 0;
-    audio.play()
-      .then(() => {
-        resetAudio(audio);
-        audio.muted = false;
-      })
-      .catch(() => {
-        audio.muted = false;
-      });
-  });
+function retryBgmFromGesture() {
+  if (!soundsUnlocked) {
+    unlockSoundsOnce();
+    return;
+  }
 
   resumePendingBgm();
 }
 
-window.addEventListener("pointerdown", unlockSoundsOnce, { once: true });
-window.addEventListener("touchstart", unlockSoundsOnce, { once: true, passive: true });
-window.addEventListener("click", unlockSoundsOnce, { once: true });
+window.addEventListener("pointerdown", retryBgmFromGesture);
+window.addEventListener("touchstart", retryBgmFromGesture, { passive: true });
+window.addEventListener("click", retryBgmFromGesture);
 
 const areaData = {
   math: {
@@ -419,41 +412,59 @@ function playSound(file, speed = 1) {
 }
 
 
-function createBgm(file) {
-  const audio = new Audio(file);
-  audio.preload = "auto";
-  audio.loop = true;
-  audio.volume = 0.34;
-  audio.load();
-  return audio;
+function getBgmAudio() {
+  if (bgmAudio) return bgmAudio;
+
+  bgmAudio = new Audio();
+  bgmAudio.preload = "auto";
+  bgmAudio.loop = true;
+  bgmAudio.volume = 0.36;
+  bgmAudio.setAttribute("playsinline", "");
+  bgmAudio.addEventListener("ended", () => {
+    try {
+      bgmAudio.currentTime = 0;
+      bgmAudio.play().catch(() => {});
+    } catch (_) {}
+  });
+
+  return bgmAudio;
 }
 
 function resumePendingBgm() {
   if (!pendingBgmFile) return;
-  playBgm(pendingBgmFile);
+
+  const audio = getBgmAudio();
+  if (audio.paused) {
+    audio.play().catch(() => {});
+  }
 }
 
 function playBgm(file, options = {}) {
   if (!file) return;
-  pendingBgmFile = file;
 
-  if (currentBgmFile === file && bgmAudio && !options.restart) {
-    bgmAudio.play().catch(() => {});
-    return;
+  pendingBgmFile = file;
+  const audio = getBgmAudio();
+  const shouldChangeTrack = currentBgmFile !== file;
+
+  if (shouldChangeTrack) {
+    audio.pause();
+    currentBgmFile = file;
+    audio.src = file;
+    audio.load();
   }
 
-  if (bgmAudio) {
-    bgmAudio.pause();
+  if (shouldChangeTrack || options.restart) {
     try {
-      bgmAudio.currentTime = 0;
+      audio.currentTime = 0;
     } catch (_) {}
   }
 
-  currentBgmFile = file;
-  bgmAudio = createBgm(file);
+  audio.loop = true;
+  audio.volume = 0.36;
+  audio.muted = false;
 
   if (!soundsUnlocked) return;
-  bgmAudio.play().catch(() => {});
+  audio.play().catch(() => {});
 }
 
 function playHomeBgm() {
@@ -467,6 +478,14 @@ function playRandomFacilityBgm() {
   lastFacilityBgmFile = file;
   playBgm(file, { restart: true });
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    getBgmAudio().pause();
+  } else {
+    resumePendingBgm();
+  }
+});
 
 async function enterPretendLandscapeMode() {
   document.body.classList.add("pretendLandscapeOnly");
@@ -1538,6 +1557,9 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
 
 
 
