@@ -247,6 +247,11 @@ let stickerStartX = 0;
 let stickerStartY = 0;
 let stickerPendingPosition = null;
 let stickerMoveFrame = null;
+const stickerPointers = new Map();
+let pinchSticker = null;
+let pinchStartDistance = 0;
+let pinchStartScale = 1;
+let isPinchingSticker = false;
 let pretendAutonomyTimer = null;
 let lastPretendInteractionAt = 0;
 
@@ -1002,6 +1007,8 @@ function selectSticker(sticker) {
   if (selectedSticker) {
     selectedSticker.classList.add("isSelected");
   }
+
+  updateStickerDeleteButton();
 }
 
 function updateStickerTransform(sticker) {
@@ -1019,6 +1026,10 @@ function updateStickerTransform(sticker) {
   const transform = `translateY(${poseY}px) scale(${scaleX}, ${scaleY}) rotate(${rotation + poseRotate}deg)`;
   sticker.style.transform = transform;
   sticker.style.setProperty("--rest-transform", transform);
+
+  if (sticker === selectedSticker) {
+    updateStickerDeleteButton();
+  }
 }
 
 function clearPokemonReaction(sticker) {
@@ -1187,6 +1198,7 @@ function moveStickerToPointer(event) {
     if (activeSticker && stickerPendingPosition) {
       activeSticker.style.left = stickerPendingPosition.left;
       activeSticker.style.top = stickerPendingPosition.top;
+      updateStickerDeleteButton();
     }
     stickerPendingPosition = null;
     stickerMoveFrame = null;
@@ -1290,16 +1302,81 @@ function showRandomPokemonMood(sticker) {
 
   saveStickerScene();
 }
-function deleteSelectedSticker() {
-  if (!selectedSticker) return;
-  selectedSticker.remove();
-  selectedSticker = null;
+function getStickerDeleteButton() {
+  if (!window.stickerBoard) return null;
+
+  let button = stickerBoard.querySelector(".stickerDeleteButton");
+  if (button) return button;
+
+  button = document.createElement("button");
+  button.type = "button";
+  button.className = "stickerDeleteButton";
+  button.setAttribute("aria-label", "このポケモンを消す");
+  button.textContent = "🗑️";
+  button.addEventListener("pointerdown", event => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  button.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteStickerElement(selectedSticker);
+  });
+  stickerBoard.appendChild(button);
+  return button;
+}
+
+function hideStickerDeleteButton() {
+  const button = stickerBoard?.querySelector(".stickerDeleteButton");
+  if (button) {
+    button.classList.remove("isVisible");
+  }
+}
+
+function updateStickerDeleteButton() {
+  if (!window.stickerBoard) return;
+
+  const button = getStickerDeleteButton();
+  if (!button) return;
+
+  if (!selectedSticker || selectedSticker.dataset.type !== "pokemon" || !stickerBoard.contains(selectedSticker)) {
+    button.classList.remove("isVisible");
+    return;
+  }
+
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const stickerRect = selectedSticker.getBoundingClientRect();
+  const left = Math.max(8, Math.min(boardRect.width - 56, stickerRect.right - boardRect.left - 22));
+  const top = Math.max(8, Math.min(boardRect.height - 56, stickerRect.top - boardRect.top - 22));
+  button.style.left = `${left}px`;
+  button.style.top = `${top}px`;
+  button.classList.add("isVisible");
+}
+
+function deleteStickerElement(sticker) {
+  if (!sticker || !stickerBoard.contains(sticker)) return;
+
+  if (sticker === activeSticker) {
+    activeSticker = null;
+  }
+
+  sticker.remove();
+
+  if (sticker === selectedSticker) {
+    selectedSticker = null;
+  }
+
+  hideStickerDeleteButton();
   saveStickerScene();
+}
+
+function deleteSelectedSticker() {
+  deleteStickerElement(selectedSticker);
 }
 
 function scaleSelectedSticker(multiplier) {
   if (!selectedSticker) return;
-  const nextScale = Math.max(0.55, Math.min(2.3, Number(selectedSticker.dataset.scale || 1) * multiplier));
+  const nextScale = Math.max(0.55, Math.min(3.5, Number(selectedSticker.dataset.scale || 1) * multiplier));
   selectedSticker.dataset.scale = nextScale.toFixed(2);
   updateStickerTransform(selectedSticker);
   saveStickerScene();
@@ -1315,6 +1392,7 @@ function rotateSelectedSticker() {
 function clearStickers() {
   stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.remove());
   selectedSticker = null;
+  hideStickerDeleteButton();
   saveStickerScene();
 }
 
@@ -1375,9 +1453,65 @@ function loadStickerScene() {
 
   selectedSticker = null;
   stickerBoard.querySelectorAll(".sticker").forEach(sticker => sticker.classList.remove("isSelected"));
+  hideStickerDeleteButton();
+}
+
+function getStickerPointerPair(sticker) {
+  const matches = [...stickerPointers.values()].filter(pointer => pointer.sticker === sticker);
+  return matches.length >= 2 ? matches.slice(0, 2) : null;
+}
+
+function getPointerDistance(pointerA, pointerB) {
+  return Math.hypot(pointerA.x - pointerB.x, pointerA.y - pointerB.y);
+}
+
+function startStickerPinch(sticker, pair) {
+  if (!sticker || sticker.dataset.type !== "pokemon" || !pair) return;
+
+  pinchSticker = sticker;
+  pinchStartDistance = Math.max(1, getPointerDistance(pair[0], pair[1]));
+  pinchStartScale = Number(sticker.dataset.scale || 1);
+  isPinchingSticker = true;
+  stickerDragMoved = true;
+  activeSticker = sticker;
+  sticker.classList.add("isDragging");
+  updateStickerTransform(sticker);
+}
+
+function handleStickerPinch() {
+  if (!isPinchingSticker || !pinchSticker) return false;
+
+  const pair = getStickerPointerPair(pinchSticker);
+  if (!pair) return false;
+
+  const distance = getPointerDistance(pair[0], pair[1]);
+  const nextScale = Math.max(0.55, Math.min(3.5, pinchStartScale * (distance / pinchStartDistance)));
+  pinchSticker.dataset.scale = nextScale.toFixed(2);
+  updateStickerTransform(pinchSticker);
+  lastPretendInteractionAt = Date.now();
+  return true;
+}
+
+function finishStickerPinchIfNeeded() {
+  if (!isPinchingSticker || !pinchSticker || getStickerPointerPair(pinchSticker)) return false;
+
+  const sticker = pinchSticker;
+  isPinchingSticker = false;
+  pinchSticker = null;
+  pinchStartDistance = 0;
+  pinchStartScale = 1;
+  sticker.classList.remove("isDragging");
+  updateStickerTransform(sticker);
+  playStickerBounce(sticker);
+  saveStickerScene();
+  activeSticker = null;
+  stickerDragMoved = false;
+  return true;
 }
 
 stickerBoard.addEventListener("pointerdown", (event) => {
+  if (event.target.closest(".stickerDeleteButton")) return;
+
   lastPretendInteractionAt = Date.now();
   event.preventDefault();
   const sticker = event.target.closest(".sticker");
@@ -1386,11 +1520,28 @@ stickerBoard.addEventListener("pointerdown", (event) => {
     return;
   }
 
-  activeSticker = sticker;
-  stickerDragMoved = false;
+  stickerPointers.set(event.pointerId, {
+    x: event.clientX,
+    y: event.clientY,
+    sticker
+  });
+
   stickerStartX = event.clientX;
   stickerStartY = event.clientY;
   selectSticker(sticker);
+
+  try {
+    sticker.setPointerCapture(event.pointerId);
+  } catch (_) {}
+
+  const pinchPair = getStickerPointerPair(sticker);
+  if (sticker.dataset.type === "pokemon" && pinchPair) {
+    startStickerPinch(sticker, pinchPair);
+    return;
+  }
+
+  activeSticker = sticker;
+  stickerDragMoved = false;
 
   if (sticker.dataset.type === "pokemon") {
     clearPokemonReaction(sticker);
@@ -1401,10 +1552,20 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   stickerOffsetY = event.clientY - rect.top;
   sticker.classList.add("isDragging");
   updateStickerTransform(sticker);
-  sticker.setPointerCapture(event.pointerId);
 });
 
 stickerBoard.addEventListener("pointermove", (event) => {
+  if (stickerPointers.has(event.pointerId)) {
+    const pointer = stickerPointers.get(event.pointerId);
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+  }
+
+  if (handleStickerPinch()) {
+    stickerDragMoved = true;
+    return;
+  }
+
   if (!activeSticker) return;
 
   if (Math.hypot(event.clientX - stickerStartX, event.clientY - stickerStartY) > 14) {
@@ -1415,7 +1576,20 @@ stickerBoard.addEventListener("pointermove", (event) => {
 });
 
 function finishStickerPointer(event) {
-  if (!activeSticker) return;
+  const pointerSticker = stickerPointers.get(event.pointerId)?.sticker || null;
+  stickerPointers.delete(event.pointerId);
+
+  if (isPinchingSticker) {
+    finishStickerPinchIfNeeded();
+    return;
+  }
+
+  if (!activeSticker) {
+    if (pointerSticker && selectedSticker === pointerSticker) {
+      updateStickerDeleteButton();
+    }
+    return;
+  }
 
   const sticker = activeSticker;
   sticker.classList.remove("isDragging");
@@ -1437,6 +1611,7 @@ function finishStickerPointer(event) {
 
   activeSticker = null;
   stickerDragMoved = false;
+  updateStickerDeleteButton();
 }
 
 stickerBoard.addEventListener("pointerup", finishStickerPointer);
@@ -1719,6 +1894,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
