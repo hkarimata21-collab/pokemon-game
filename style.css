@@ -2534,3 +2534,65 @@ body.pretendLandscapeOnly #stickerBoard .stickerShelf {
     right: max(72px, calc(env(safe-area-inset-right) + 72px)) !important;
   }
 }
+
+/* Restore scrolling inside pretend play */
+html,
+body {
+  overflow-x: hidden;
+  overflow-y: auto !important;
+}
+
+body.pretendLandscapeOnly {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+body.pretendLandscapeOnly #townScreen.screen {
+  min-height: 100dvh !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.pretendLandscapeOnly #stickerArea.stickerPanel {
+  height: auto !important;
+  min-height: calc(100dvh - 8px) !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y !important;
+}
+
+body.pretendLandscapeOnly #stickerBoard.stickerBoard {
+  touch-action: pan-y !important;
+}
+
+body.pretendLandscapeOnly #stickerBoard .sticker,
+body.pretendLandscapeOnly #stickerBoard .stickerDeleteButton {
+  touch-action: none !important;
+}
+
+#stickerBoard .stickerToolboxButton,
+#stickerBoard .shelfCategoryButton,
+#stickerBoard .stickerShelfClose {
+  touch-action: manipulation !important;
+}
+
+#stickerBoard .stickerShelf,
+#stickerBoard .stickerShelfItems {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain;
+}
+
+#stickerBoard .stickerShelfItems {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  touch-action: pan-x !important;
+}
+
+#stickerBoard .stickerShelfControls {
+  touch-action: pan-y !important;
+}
