@@ -241,6 +241,7 @@ let activeSticker = null;
 let selectedSticker = null;
 let currentStickerBackground = "forest";
 let activeStickerShelfCategory = "";
+let isStickerToolboxOpen = false;
 let shelfDragCandidate = null;
 let shelfDragJustPlaced = false;
 let stickerDragMoved = false;
@@ -919,8 +920,25 @@ function getShelfItems(category) {
     }));
 }
 
+function openStickerToolbox() {
+  isStickerToolboxOpen = true;
+  stickerBoard.classList.add("isToolboxOpen");
+  stickerToolboxButton?.classList.add("isOpen");
+  stickerToolboxButton?.setAttribute("aria-expanded", "true");
+}
+
+function toggleStickerToolbox() {
+  if (isStickerToolboxOpen || stickerShelf.classList.contains("isOpen")) {
+    closeStickerShelf();
+    return;
+  }
+
+  openStickerToolbox();
+}
+
 function openStickerShelf(category) {
   activeStickerShelfCategory = stickerShelfCategories[category] ? category : "pokemon";
+  openStickerToolbox();
   stickerShelf.classList.add("isOpen");
   stickerShelf.setAttribute("aria-hidden", "false");
   renderActiveStickerShelf();
@@ -928,8 +946,12 @@ function openStickerShelf(category) {
 
 function closeStickerShelf() {
   activeStickerShelfCategory = "";
+  isStickerToolboxOpen = false;
+  stickerBoard.classList.remove("isToolboxOpen");
   stickerShelf.classList.remove("isOpen");
   stickerShelf.setAttribute("aria-hidden", "true");
+  stickerToolboxButton?.classList.remove("isOpen");
+  stickerToolboxButton?.setAttribute("aria-expanded", "false");
   document.querySelectorAll(".shelfCategoryButton").forEach(button => button.classList.remove("isActive"));
 }
 
@@ -1655,13 +1677,14 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   if (event.target.closest(".stickerDeleteButton")) return;
 
   lastPretendInteractionAt = Date.now();
-  event.preventDefault();
   const sticker = event.target.closest(".sticker");
   if (!sticker) {
     selectSticker(null);
     closeStickerShelf();
     return;
   }
+
+  event.preventDefault();
 
   stickerPointers.set(event.pointerId, {
     x: event.clientX,
@@ -1760,7 +1783,7 @@ function finishStickerPointer(event) {
 stickerBoard.addEventListener("pointerup", finishStickerPointer);
 stickerBoard.addEventListener("pointercancel", finishStickerPointer);
 
-[window.stickerShelfControls, window.stickerShelf].forEach(element => {
+[window.stickerToolboxButton, window.stickerShelfControls, window.stickerShelf].forEach(element => {
   if (!element) return;
   element.addEventListener("pointerdown", event => event.stopPropagation());
   element.addEventListener("click", event => event.stopPropagation());
@@ -2051,6 +2074,8 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
 
 
 
