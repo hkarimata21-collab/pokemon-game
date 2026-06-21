@@ -1,4 +1,4 @@
-// ====================
+﻿// ====================
 // ポケモンデータ
 // ====================
 
@@ -936,8 +936,19 @@ function toggleStickerToolbox() {
   openStickerToolbox();
 }
 
+function promoteStickerShelfCategory(category) {
+  if (!window.stickerShelfControls) return;
+
+  const button = [...stickerShelfControls.querySelectorAll(".shelfCategoryButton")]
+    .find(item => item.getAttribute("onclick")?.includes(`'${category}'`));
+  if (button) {
+    stickerShelfControls.prepend(button);
+  }
+}
+
 function openStickerShelf(category) {
   activeStickerShelfCategory = stickerShelfCategories[category] ? category : "pokemon";
+  promoteStickerShelfCategory(activeStickerShelfCategory);
   openStickerToolbox();
   stickerShelf.classList.add("isOpen");
   stickerShelf.setAttribute("aria-hidden", "false");
@@ -2074,6 +2085,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
