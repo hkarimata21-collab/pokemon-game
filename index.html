@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ポケモンまなびタウン</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260621-shelf2">
   <link rel="icon" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -113,22 +113,25 @@
           <button onclick="clearStickers()">ぜんぶけす</button>
         </div>
 
-        <div class="backgroundPicker" aria-label="背景を選ぶ">
-          <button class="bgButton" onclick="setStickerBackground('room')">かわいい部屋</button>
-          <button class="bgButton" onclick="setStickerBackground('beach')">ビーチ</button>
-          <button class="bgButton" onclick="setStickerBackground('park')">公園</button>
-          <button class="bgButton" onclick="setStickerBackground('night')">よる</button>
-        </div>
-
         <div class="stickerPlayLayout">
-          <div class="stickerTray">
-            <h3>ポケモン</h3>
-            <div id="pokemonStickerTray" class="stickerChoiceGrid"></div>
-            <h3>あそびどうぐ</h3>
-            <div id="itemStickerTray" class="stickerChoiceGrid"></div>
-          </div>
+          <div id="stickerBoard" class="stickerBoard boardRoom" aria-label="ステッカーを貼る場所">
+            <div id="stickerShelfControls" class="stickerShelfControls" aria-label="アイテムカテゴリ">
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('pokemon')">⚡<span>ポケモン</span></button>
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('furniture')">🛌<span>家具</span></button>
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('food')">🍔<span>食べ物</span></button>
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('play')">⚾<span>遊び道具</span></button>
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('decoration')">🌸<span>装飾</span></button>
+              <button type="button" class="shelfCategoryButton" onclick="openStickerShelf('background')">🖼️<span>背景</span></button>
+            </div>
 
-          <div id="stickerBoard" class="stickerBoard boardRoom" aria-label="ステッカーを貼る場所"></div>
+            <div id="stickerShelf" class="stickerShelf" aria-hidden="true">
+              <div class="stickerShelfHeader">
+                <strong id="stickerShelfTitle">アイテム</strong>
+                <button type="button" class="stickerShelfClose" onclick="closeStickerShelf()" aria-label="棚を閉じる">×</button>
+              </div>
+              <div id="stickerShelfItems" class="stickerShelfItems"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -174,9 +177,11 @@
     </section>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260621-shelf2"></script>
 </body>
 </html>
+
+
 
 
 

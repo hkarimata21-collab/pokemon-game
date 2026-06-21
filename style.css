@@ -2072,3 +2072,183 @@ body.pretendLandscapeOnly .bgButton {
 .stickerDeleteButton:active {
   transform: scale(0.92);
 }
+
+/* Collapsible bottom item shelf */
+.stickerPlayLayout {
+  display: block;
+}
+
+.stickerTray,
+.backgroundPicker {
+  display: none;
+}
+
+#stickerBoard.stickerBoard {
+  min-height: clamp(500px, 68vh, 760px);
+  height: clamp(500px, 68vh, 760px);
+}
+
+.stickerShelfControls {
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  max-width: calc(100% - 18px);
+  gap: 7px;
+  padding: 7px;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 2px solid rgba(255, 255, 255, 0.76);
+  box-shadow: 0 10px 24px rgba(47, 83, 94, 0.18);
+  transform: translateX(-50%);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.stickerShelfControls::-webkit-scrollbar,
+.stickerShelfItems::-webkit-scrollbar {
+  display: none;
+}
+
+.shelfCategoryButton {
+  flex: 0 0 auto;
+  min-width: 70px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.66);
+  color: #2f4d5a;
+  font-size: 21px;
+  line-height: 1;
+  box-shadow: 0 4px 10px rgba(38, 64, 78, 0.12);
+}
+
+.shelfCategoryButton span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shelfCategoryButton.isActive {
+  background: #fff4a8;
+  border-color: #ffcb05;
+  transform: translateY(-2px);
+}
+
+.stickerShelf {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: max(74px, calc(env(safe-area-inset-bottom) + 74px));
+  z-index: 65;
+  padding: 10px 10px 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 34px rgba(38, 64, 78, 0.22);
+  transform: translateY(calc(100% + 100px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.18, 0.9, 0.22, 1.08), opacity 160ms ease;
+  backdrop-filter: blur(10px);
+}
+
+.stickerShelf.isOpen {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.stickerShelfHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #2f4d5a;
+}
+
+.stickerShelfHeader strong {
+  font-size: 16px;
+}
+
+.stickerShelfClose {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  background: #657786;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.stickerShelfItems {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 82px;
+  overflow-x: auto;
+  padding: 3px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.stickerShelfItems .paletteSticker,
+.stickerShelfItems .emptyPaletteMessage {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 16px rgba(38, 64, 78, 0.16);
+  font-size: 34px;
+}
+
+.stickerShelfItems .paletteSticker.isActive {
+  background: #fff4a8;
+  border-color: #ffcb05;
+}
+
+.stickerShelfItems .pokemonPaletteSticker img {
+  width: 56px;
+  height: 56px;
+}
+
+@media (orientation: landscape) {
+  body.pretendLandscapeOnly #stickerBoard.stickerBoard {
+    min-height: calc(100dvh - 116px);
+    height: calc(100dvh - 116px);
+  }
+}
+
+@media (max-width: 760px) {
+  .shelfCategoryButton {
+    min-width: 58px;
+    height: 48px;
+    font-size: 19px;
+  }
+
+  .shelfCategoryButton span {
+    font-size: 10px;
+  }
+
+  .stickerShelf {
+    left: 6px;
+    right: 6px;
+  }
+}
