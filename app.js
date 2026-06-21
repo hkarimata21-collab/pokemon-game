@@ -240,6 +240,9 @@ let currentB = 0;
 let activeSticker = null;
 let selectedSticker = null;
 let currentStickerBackground = "forest";
+let activeStickerShelfCategory = "";
+let shelfDragCandidate = null;
+let shelfDragJustPlaced = false;
 let stickerDragMoved = false;
 let stickerOffsetX = 0;
 let stickerOffsetY = 0;
@@ -837,48 +840,185 @@ function getStickerStorageKey(background = currentStickerBackground) {
   return `stickerScene:${background}`;
 }
 
+const stickerShelfCategories = {
+  pokemon: { title: "ポケモン", icon: "⚡" },
+  furniture: { title: "家具", icon: "🛌" },
+  food: { title: "食べ物", icon: "🍔" },
+  play: { title: "遊び道具", icon: "⚾" },
+  decoration: { title: "装飾", icon: "🌸" },
+  background: { title: "背景", icon: "🖼️" }
+};
+
 function renderStickerChoices() {
   renderBackgroundChoices();
-  renderPokemonStickerChoices();
-  renderItemStickerChoices();
+  renderActiveStickerShelf();
 }
 
-function renderItemStickerChoices() {
+function getShelfItems(category) {
   const owned = getOwnedRewards();
-  const ownedItems = placeableRewardCategories.flatMap(category =>
-    (owned[category] || [])
-      .map(id => getRewardDefinition(category, id))
+
+  if (category === "pokemon") {
+    return (owned.pokemon || [])
+      .map(no => pokemonList.find(p => String(p.dexNo) === String(no)))
       .filter(Boolean)
-  );
+      .map(p => ({
+        kind: "pokemon",
+        category: "pokemon",
+        id: String(p.dexNo),
+        label: p.name,
+        html: `<img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">`
+      }));
+  }
 
-  if (ownedItems.length === 0) {
-    itemStickerTray.innerHTML = `<div class="emptyPaletteMessage">?</div>`;
+  if (category === "background") {
+    return (owned.background || [])
+      .map(id => getRewardDefinition("background", id))
+      .filter(Boolean)
+      .map(item => ({
+        kind: "background",
+        category: "background",
+        id: item.id,
+        label: item.label,
+        html: item.icon
+      }));
+  }
+
+  if (category === "play") {
+    const playItems = [
+      ...(owned.decoration || [])
+        .filter(id => id === "ball")
+        .map(id => getRewardDefinition("decoration", id)),
+      ...(owned.building || [])
+        .map(id => getRewardDefinition("building", id))
+    ].filter(Boolean);
+
+    return playItems.map(item => ({
+      kind: "item",
+      category: item.category,
+      id: item.id,
+      label: item.label,
+      html: item.icon
+    }));
+  }
+
+  const sourceCategory = category;
+  let ids = owned[sourceCategory] || [];
+  if (category === "decoration") {
+    ids = ids.filter(id => id !== "ball");
+  }
+
+  return ids
+    .map(id => getRewardDefinition(sourceCategory, id))
+    .filter(Boolean)
+    .map(item => ({
+      kind: "item",
+      category: item.category,
+      id: item.id,
+      label: item.label,
+      html: item.icon
+    }));
+}
+
+function openStickerShelf(category) {
+  activeStickerShelfCategory = stickerShelfCategories[category] ? category : "pokemon";
+  stickerShelf.classList.add("isOpen");
+  stickerShelf.setAttribute("aria-hidden", "false");
+  renderActiveStickerShelf();
+}
+
+function closeStickerShelf() {
+  activeStickerShelfCategory = "";
+  stickerShelf.classList.remove("isOpen");
+  stickerShelf.setAttribute("aria-hidden", "true");
+  document.querySelectorAll(".shelfCategoryButton").forEach(button => button.classList.remove("isActive"));
+}
+
+function renderActiveStickerShelf() {
+  if (!window.stickerShelfItems) return;
+
+  const category = activeStickerShelfCategory || "pokemon";
+  const meta = stickerShelfCategories[category] || stickerShelfCategories.pokemon;
+  stickerShelfTitle.textContent = `${meta.icon} ${meta.title}`;
+
+  document.querySelectorAll(".shelfCategoryButton").forEach(button => {
+    const match = button.getAttribute("onclick")?.match(/'([^']+)'/);
+    button.classList.toggle("isActive", match?.[1] === activeStickerShelfCategory);
+  });
+
+  const items = getShelfItems(category);
+  if (items.length === 0) {
+    stickerShelfItems.innerHTML = `<div class="emptyPaletteMessage">?</div>`;
     return;
   }
 
-  itemStickerTray.innerHTML = ownedItems.map(item => `
-    <button class="paletteSticker" type="button" onclick="addItemSticker('${item.category}', '${item.id}')" aria-label="${item.label}">
-      ${item.icon}
+  stickerShelfItems.innerHTML = items.map(item => `
+    <button
+      class="paletteSticker shelfStickerChoice ${item.kind === "pokemon" ? "pokemonPaletteSticker" : ""} ${item.kind === "background" && item.id === currentStickerBackground ? "isActive" : ""}"
+      type="button"
+      onclick="chooseStickerShelfItem('${item.kind}', '${item.category}', '${item.id}')"
+      onpointerdown="beginStickerShelfDrag(event, '${item.kind}', '${item.category}', '${item.id}')"
+      aria-label="${item.label}"
+    >
+      ${item.html}
     </button>
   `).join("");
 }
 
-function renderPokemonStickerChoices() {
-  const owned = getOwnedRewards();
-  const ownedPokemon = (owned.pokemon || [])
-    .map(no => pokemonList.find(p => String(p.dexNo) === String(no)))
-    .filter(Boolean);
+function getBoardPlacementFromClient(clientX, clientY) {
+  const rect = stickerBoard.getBoundingClientRect();
+  return {
+    x: Math.max(4, Math.min(92, ((clientX - rect.left) / rect.width) * 100)),
+    y: Math.max(4, Math.min(86, ((clientY - rect.top) / rect.height) * 100))
+  };
+}
 
-  if (ownedPokemon.length === 0) {
-    pokemonStickerTray.innerHTML = `<div class="emptyPaletteMessage">?</div>`;
+function beginStickerShelfDrag(event, kind, category, id) {
+  if (kind === "background") return;
+
+  shelfDragCandidate = {
+    kind,
+    category,
+    id,
+    startX: event.clientX,
+    startY: event.clientY
+  };
+  shelfDragJustPlaced = false;
+}
+
+function placeShelfDragItem(event) {
+  if (!shelfDragCandidate) return;
+
+  const dx = event.clientX - shelfDragCandidate.startX;
+  const dy = event.clientY - shelfDragCandidate.startY;
+  if (Math.hypot(dx, dy) < 18 || dy > -8) return;
+
+  const placement = getBoardPlacementFromClient(event.clientX, event.clientY);
+  if (shelfDragCandidate.kind === "pokemon") {
+    addPokemonSticker(Number(shelfDragCandidate.id), placement);
+  } else {
+    addItemSticker(shelfDragCandidate.category, shelfDragCandidate.id, placement);
+  }
+
+  shelfDragCandidate = null;
+  shelfDragJustPlaced = true;
+  closeStickerShelf();
+}
+
+function chooseStickerShelfItem(kind, category, id) {
+  if (shelfDragJustPlaced) {
+    shelfDragJustPlaced = false;
     return;
   }
 
-  pokemonStickerTray.innerHTML = ownedPokemon.map(p => `
-    <button class="paletteSticker pokemonPaletteSticker" type="button" onclick="addPokemonSticker(${p.dexNo})" aria-label="${p.name}">
-      <img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">
-    </button>
-  `).join("");
+  if (kind === "pokemon") {
+    addPokemonSticker(Number(id));
+  } else if (kind === "background") {
+    setStickerBackground(id);
+  } else {
+    addItemSticker(category, id);
+  }
+
+  closeStickerShelf();
 }
 
 function renderBackgroundChoices() {
@@ -890,6 +1030,7 @@ function renderBackgroundChoices() {
     button.hidden = !isOwned;
     button.disabled = !isOwned;
   });
+  renderActiveStickerShelf();
 }
 
 function setStickerBackground(name, options = {}) {
@@ -917,8 +1058,9 @@ function setStickerBackground(name, options = {}) {
   stickerBoard.classList.add(`board${name.charAt(0).toUpperCase()}${name.slice(1)}`);
 
   document.querySelectorAll(".bgButton").forEach(button => {
-    button.classList.toggle("isActive", button.getAttribute("onclick").includes(`'${name}'`));
+    button.classList.toggle("isActive", button.getAttribute("onclick")?.includes(`'${name}'`));
   });
+  renderActiveStickerShelf();
 
   loadStickerScene();
 }
@@ -927,7 +1069,7 @@ function addSticker(mark) {
   addItemSticker(mark);
 }
 
-function addItemSticker(category, itemId) {
+function addItemSticker(category, itemId, placement = null) {
   const item = getRewardDefinition(category, itemId);
   if (!item) return;
 
@@ -937,10 +1079,10 @@ function addItemSticker(category, itemId) {
     category: item.category,
     content: item.icon,
     label: item.label
-  });
+  }, placement);
 }
 
-function addPokemonSticker(dexNo) {
+function addPokemonSticker(dexNo, placement = null) {
   const p = pokemonList.find(x => x.dexNo === dexNo);
   if (!p) return;
 
@@ -950,7 +1092,7 @@ function addPokemonSticker(dexNo) {
     pokemonId: p.pokemonId,
     content: getPokemonImage(p.pokemonId),
     label: p.name
-  });
+  }, placement);
 }
 
 function createSticker(stickerData, savedState = null, shouldSave = true) {
@@ -981,8 +1123,8 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
     sticker.style.left = `${savedState.x}%`;
     sticker.style.top = `${savedState.y}%`;
   } else {
-    sticker.style.left = `${22 + Math.random() * 44}%`;
-    sticker.style.top = `${20 + Math.random() * 44}%`;
+    sticker.style.left = "50%";
+    sticker.style.top = "50%";
   }
 
   updateStickerTransform(sticker);
@@ -1311,7 +1453,7 @@ function getStickerDeleteButton() {
   button = document.createElement("button");
   button.type = "button";
   button.className = "stickerDeleteButton";
-  button.setAttribute("aria-label", "このポケモンを消す");
+  button.setAttribute("aria-label", "このステッカーを消す");
   button.textContent = "🗑️";
   button.addEventListener("pointerdown", event => {
     event.preventDefault();
@@ -1339,7 +1481,7 @@ function updateStickerDeleteButton() {
   const button = getStickerDeleteButton();
   if (!button) return;
 
-  if (!selectedSticker || selectedSticker.dataset.type !== "pokemon" || !stickerBoard.contains(selectedSticker)) {
+  if (!selectedSticker || !stickerBoard.contains(selectedSticker)) {
     button.classList.remove("isVisible");
     return;
   }
@@ -1466,7 +1608,7 @@ function getPointerDistance(pointerA, pointerB) {
 }
 
 function startStickerPinch(sticker, pair) {
-  if (!sticker || sticker.dataset.type !== "pokemon" || !pair) return;
+  if (!sticker || !pair) return;
 
   pinchSticker = sticker;
   pinchStartDistance = Math.max(1, getPointerDistance(pair[0], pair[1]));
@@ -1517,6 +1659,7 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   const sticker = event.target.closest(".sticker");
   if (!sticker) {
     selectSticker(null);
+    closeStickerShelf();
     return;
   }
 
@@ -1535,7 +1678,7 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   } catch (_) {}
 
   const pinchPair = getStickerPointerPair(sticker);
-  if (sticker.dataset.type === "pokemon" && pinchPair) {
+  if (pinchPair) {
     startStickerPinch(sticker, pinchPair);
     return;
   }
@@ -1616,6 +1759,20 @@ function finishStickerPointer(event) {
 
 stickerBoard.addEventListener("pointerup", finishStickerPointer);
 stickerBoard.addEventListener("pointercancel", finishStickerPointer);
+
+[window.stickerShelfControls, window.stickerShelf].forEach(element => {
+  if (!element) return;
+  element.addEventListener("pointerdown", event => event.stopPropagation());
+  element.addEventListener("click", event => event.stopPropagation());
+});
+
+document.addEventListener("pointermove", placeShelfDragItem);
+document.addEventListener("pointerup", () => {
+  shelfDragCandidate = null;
+});
+document.addEventListener("pointercancel", () => {
+  shelfDragCandidate = null;
+});
 
 function startAdditionGame() {
   hideAllPanels();
@@ -1894,6 +2051,9 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
 
 
 
