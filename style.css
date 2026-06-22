@@ -2978,4 +2978,262 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
     font-size: 17px;
   }
 }
+/* Hiragana tracing plaza */
+.hiraganaPanel {
+  width: min(900px, 100%) !important;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 243, 157, 0.78), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(231, 250, 255, 0.96)) !important;
+}
+
+.hiraganaShell {
+  display: grid;
+  gap: 14px;
+}
+
+.hiraganaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.hiraganaHeader h2 {
+  font-size: clamp(26px, 5vw, 42px);
+  color: #1e3540;
+}
+
+.hiraganaWord {
+  min-width: 86px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fff2a8;
+  color: #26625c;
+  font-size: 26px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 3px rgba(255, 198, 41, 0.28);
+}
+
+.hiraganaLetterTabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hiraganaTab {
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid rgba(78, 162, 222, 0.42);
+  box-shadow: 0 5px 0 rgba(44, 110, 167, 0.16);
+  font-size: 30px;
+}
+
+.hiraganaTab.isActive {
+  background: #ffcb05;
+  border-color: #ff9f1a;
+}
+
+.hiraganaBoardWrap {
+  position: relative;
+  width: min(560px, 94vw);
+  margin: 0 auto;
+  touch-action: none;
+}
+
+.hiraganaBoard {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 30px;
+  background:
+    linear-gradient(90deg, rgba(68, 164, 202, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(68, 164, 202, 0.08) 1px, transparent 1px),
+    #fffdf7;
+  background-size: 50px 50px;
+  border: 5px solid rgba(79, 177, 190, 0.26);
+  box-shadow: 0 16px 28px rgba(38, 64, 78, 0.16);
+  touch-action: none;
+}
+
+.hiraganaGhost {
+  dominant-baseline: middle;
+  text-anchor: middle;
+  font-size: 220px;
+  font-weight: 900;
+  fill: rgba(55, 132, 137, 0.08);
+}
+
+.hiraganaStroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 22;
+}
+
+.hiraganaStroke.isWaiting {
+  stroke: rgba(73, 117, 127, 0.12);
+}
+
+.hiraganaStroke.isDone {
+  stroke: rgba(66, 191, 126, 0.8);
+}
+
+.hiraganaStroke.isCurrent {
+  stroke: rgba(255, 196, 36, 0.55);
+  filter: url(#hiraganaGlow);
+  animation: hiraganaCurrentPulse 1400ms ease-in-out infinite;
+}
+
+.hiraganaTraceLine {
+  fill: none;
+  stroke: #39b6ff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 18;
+  opacity: 0.82;
+}
+
+.hiraganaStartPoint,
+.hiraganaGoalPoint,
+.hiraganaGuidePoint {
+  pointer-events: none;
+}
+
+.hiraganaStartPoint {
+  fill: #26d07c;
+  stroke: #fff;
+  stroke-width: 6;
+}
+
+.hiraganaGoalPoint {
+  fill: #ff7eb6;
+  stroke: #fff;
+  stroke-width: 6;
+}
+
+.hiraganaGuidePoint {
+  fill: #ffcb05;
+  stroke: #fff;
+  stroke-width: 6;
+  filter: drop-shadow(0 4px 5px rgba(116, 82, 0, 0.25));
+}
+
+.hiraganaStartPoint.isPulse {
+  animation: hiraganaPointPulse 520ms ease-out;
+}
+
+.hiraganaStatus {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #285b60;
+  font-weight: 900;
+}
+
+.hiraganaStatus strong {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #d9fff0;
+  color: #087658;
+}
+
+.hiraganaActions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hiraganaSparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hiraganaSparkles span {
+  position: absolute;
+  left: var(--x);
+  top: 48%;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: #ff9f1a;
+  font-weight: 900;
+  opacity: 0;
+  transform: translate(-50%, 20px) scale(0.7) rotate(-8deg);
+  animation: hiraganaSparklePop 820ms ease-out var(--delay) forwards;
+}
+
+.hiraganaClear {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 18px 0;
+}
+
+.hiraganaClearLetter {
+  width: 180px;
+  height: 180px;
+  display: grid;
+  place-items: center;
+  border-radius: 36px;
+  background: #fff2a8;
+  color: #1f4754;
+  font-size: 128px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 5px rgba(255, 198, 41, 0.36), 0 14px 24px rgba(38, 64, 78, 0.16);
+}
+
+@keyframes hiraganaCurrentPulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
+@keyframes hiraganaPointPulse {
+  0%, 100% { r: 13; }
+  45% { r: 22; }
+}
+
+@keyframes hiraganaSparklePop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.7) rotate(-8deg);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(-50%, -10px) scale(1.08) rotate(5deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -42px) scale(0.9) rotate(-3deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .hiraganaPanel {
+    padding: 12px !important;
+  }
+
+  .hiraganaHeader {
+    align-items: flex-start;
+  }
+
+  .hiraganaWord {
+    min-width: 68px;
+    font-size: 22px;
+  }
+
+  .hiraganaTab {
+    width: 50px;
+    height: 50px;
+    font-size: 26px;
+  }
+}
 

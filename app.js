@@ -1,4 +1,4 @@
-// ====================
+﻿// ====================
 // ポケモンデータ
 // ====================
 
@@ -231,6 +231,8 @@ const pokemonList = [
 
 let currentPokemon = null;
 let currentAnswer = 0;
+let currentLearningMode = "addition";
+let pendingHiraganaNextIndex = 0;
 let catchCount = 0;
 let isCatching = false;
 let catchResolved = false;
@@ -333,7 +335,7 @@ const areaData = {
     kicker: "📚 ことば広場",
     title: "ことば広場",
     items: [
-      { label: "ひらがな", action: "showComingSoon('ひらがな')" },
+      { label: "ひらがな", action: "startHiraganaPractice()" },
       { label: "カタカナ", action: "showComingSoon('カタカナ')" },
       { label: "漢字", action: "showComingSoon('漢字')" }
     ]
@@ -546,10 +548,12 @@ window.addEventListener("resize", updateLandscapeWarning);
 window.addEventListener("orientationchange", () => window.setTimeout(updateLandscapeWarning, 150));
 
 function hideAllPanels() {
+  stopHiraganaGuide();
   stopPretendAutonomy();
   exitPretendLandscapeMode();
   areaMenu.classList.add("hidden");
   placeholderPanel.classList.add("hidden");
+  placeholderPanel.classList.remove("hiraganaPanel");
   stickerArea.classList.add("hidden");
   gameScreen.classList.add("hidden");
   dexPanel.classList.add("hidden");
@@ -602,14 +606,37 @@ function showComingSoon(name) {
 }
 
 function showRewards() {
-  const dex = JSON.parse(localStorage.getItem("dex") || "[]");
+  const dex = getUnifiedDex();
   const count = dex.length;
   const reward = count >= 20 ? "金のスター" : count >= 10 ? "銀のスター" : count >= 3 ? "銅のスター" : "はじめてバッジ";
+  const owned = getOwnedRewards();
+  const nextReward = getNextLearningReward();
+  const ownedCounts = [
+    ["ポケモン", owned.pokemon.length],
+    ["家具", owned.furniture.length],
+    ["食べ物", owned.food.length],
+    ["かざり", owned.decoration.length],
+    ["背景", owned.background.length],
+    ["建物", owned.building.length]
+  ];
+
   hideAllPanels();
   areaMenu.classList.remove("hidden");
   placeholderPanel.innerHTML = `
     <h2>🎁 ${reward}</h2>
     <p>いままでに ${count} ひきのポケモンをゲットしたよ。</p>
+    <div class="rewardSummaryGrid">
+      ${ownedCounts.map(([label, value]) => `<div class="rewardSummaryCard"><strong>${value}</strong><span>${label}</span></div>`).join("")}
+    </div>
+    ${nextReward ? `
+      <div class="nextRewardPreview">
+        <span class="nextRewardIcon">${getRewardIconHtml(nextReward.category, nextReward.id)}</span>
+        <div>
+          <span>つぎのごほうび</span>
+          <strong>${getRewardLabel(nextReward.category, nextReward.id)}</strong>
+        </div>
+      </div>
+    ` : `<p class="rewardCompleteText">いまあるごほうびはぜんぶ使えるよ。</p>`}
   `;
   placeholderPanel.classList.remove("hidden");
 }
@@ -742,6 +769,77 @@ function getRewardDefinition(category, id) {
   return (rewards[category] || []).find(reward => normalizeRewardId(reward.id) === normalizedId);
 }
 
+function getRewardLabel(category, id) {
+  return getRewardDefinition(category, id)?.label || "あたらしいごほうび";
+}
+
+function getRewardIconHtml(category, id) {
+  const reward = getRewardDefinition(category, id);
+
+  if (category === "pokemon") {
+    const pokemon = pokemonList.find(p => normalizeRewardId(p.dexNo) === normalizeRewardId(id));
+    return pokemon ? `<img src="${getPokemonImage(pokemon.pokemonId)}" alt="">` : "⚡";
+  }
+
+  return reward?.icon || "🎁";
+}
+
+function getNextLearningReward() {
+  const owned = getOwnedRewards();
+  let progress = Number(localStorage.getItem("learningRewardProgress") || "0");
+
+  while (progress < learningRewardPlan.length) {
+    const reward = learningRewardPlan[progress];
+    const categoryOwned = owned[reward.category] || [];
+    if (!categoryOwned.includes(normalizeRewardId(reward.id))) {
+      return { ...reward, step: progress + 1 };
+    }
+    progress++;
+  }
+
+  return null;
+}
+
+function ensureLearningHud() {
+  if (!window.gameScreen) return null;
+
+  let hud = document.getElementById("learningRewardHud");
+  if (hud) return hud;
+
+  hud = document.createElement("div");
+  hud.id = "learningRewardHud";
+  hud.className = "learningRewardHud";
+  const battle = document.getElementById("battleArea");
+  gameScreen.insertBefore(hud, battle || gameScreen.firstChild);
+  return hud;
+}
+
+function renderLearningHud() {
+  const hud = ensureLearningHud();
+  if (!hud) return;
+  hud.classList.remove("hidden");
+
+  const nextReward = getNextLearningReward();
+  if (!nextReward) {
+    hud.innerHTML = `
+      <div class="learningHudIcon">🎁</div>
+      <div class="learningHudText">
+        <span>ごほうび</span>
+        <strong>ぜんぶ あつまったよ</strong>
+      </div>
+    `;
+    return;
+  }
+
+  hud.innerHTML = `
+    <div class="learningHudIcon">${getRewardIconHtml(nextReward.category, nextReward.id)}</div>
+    <div class="learningHudText">
+      <span>このもんだいのごほうび</span>
+      <strong>${getRewardLabel(nextReward.category, nextReward.id)}</strong>
+    </div>
+  `;
+}
+
 function addOwnedReward(category, id, options = {}) {
   const normalizedId = normalizeRewardId(id);
   const owned = getOwnedRewards();
@@ -759,8 +857,10 @@ function addOwnedReward(category, id, options = {}) {
 
   if (!options.silent) {
     const reward = getRewardDefinition(category, normalizedId);
-    showRewardNotice(reward?.label || "あたらしいアイテム");
+    showRewardNotice(reward?.label || "あたらしいアイテム", { category, id: normalizedId });
   }
+
+  renderLearningHud();
 
   if (!stickerArea.classList.contains("hidden")) {
     renderStickerChoices();
@@ -769,8 +869,29 @@ function addOwnedReward(category, id, options = {}) {
   return true;
 }
 
-function showRewardNotice() {
-  // Rewards stay quiet for now so pretend play remains the main focus.
+function showRewardNotice(label, reward = null) {
+  let toast = document.getElementById("rewardToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "rewardToast";
+    toast.className = "rewardToast";
+    document.body.appendChild(toast);
+  }
+
+  toast.innerHTML = `
+    <span class="rewardToastIcon">${reward ? getRewardIconHtml(reward.category, reward.id) : "🎁"}</span>
+    <span class="rewardToastText">
+      <strong>${label}をゲット！</strong>
+      <small>おままごとで使えるようになったよ</small>
+    </span>
+  `;
+  toast.classList.remove("isVisible");
+  void toast.offsetWidth;
+  toast.classList.add("isVisible");
+  clearTimeout(window.rewardToastTimer);
+  window.rewardToastTimer = window.setTimeout(() => {
+    toast.classList.remove("isVisible");
+  }, 2600);
 }
 
 function awardNextLearningReward() {
@@ -782,10 +903,12 @@ function awardNextLearningReward() {
     localStorage.setItem("learningRewardProgress", String(progress));
 
     if (addOwnedReward(reward.category, reward.id)) {
+      renderLearningHud();
       return true;
     }
   }
 
+  renderLearningHud();
   return false;
 }
 
@@ -1192,13 +1315,14 @@ function updateStickerTransform(sticker) {
   const dragBoost = sticker.classList.contains("isDragging") ? 1.1 : 1;
   const pose = sticker.dataset.reaction || sticker.dataset.pokeState || "";
   const facing = sticker.dataset.type === "pokemon" ? Number(sticker.dataset.facing || 1) : 1;
-  const poseRotate = pose === "sleeping" || pose === "sleep" ? -16 : pose === "sit" ? -4 : 0;
-  const poseY = pose === "sit" ? 8 : pose === "eating" || pose === "eat" ? -2 : 0;
-  const poseScaleX = pose === "sleeping" || pose === "sleep" ? 1.08 : 1;
-  const poseScaleY = pose === "sleeping" || pose === "sleep" ? 0.9 : 1;
+  const lookTilt = sticker.dataset.type === "pokemon" ? Number(sticker.dataset.lookTilt || 0) : 0;
+  const poseRotate = pose === "sleeping" || pose === "sleep" ? -58 : pose === "sit" ? -7 : 0;
+  const poseY = pose === "sleeping" || pose === "sleep" ? 28 : pose === "sit" ? 13 : pose === "eating" || pose === "eat" ? -2 : 0;
+  const poseScaleX = pose === "sleeping" || pose === "sleep" ? 1.25 : 1;
+  const poseScaleY = pose === "sleeping" || pose === "sleep" ? 0.74 : 1;
   const scaleX = (scale * dragBoost * poseScaleX * facing).toFixed(3);
   const scaleY = (scale * dragBoost * poseScaleY).toFixed(3);
-  const transform = `translateY(${poseY}px) scale(${scaleX}, ${scaleY}) rotate(${rotation + poseRotate}deg)`;
+  const transform = `translateY(${poseY}px) scale(${scaleX}, ${scaleY}) rotate(${rotation + poseRotate + lookTilt}deg)`;
   sticker.style.transform = transform;
   sticker.style.setProperty("--rest-transform", transform);
 
@@ -1208,11 +1332,17 @@ function updateStickerTransform(sticker) {
 }
 
 function clearPokemonReaction(sticker) {
-  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isWalking", "isHungry", "isSleepy");
+  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isWalking", "isHungry", "isSleepy", "isLooking");
   sticker.dataset.reaction = "";
   sticker.dataset.pokeState = "normal";
   sticker.dataset.bubble = "";
+  sticker.dataset.lookTilt = "0";
   updateStickerTransform(sticker);
+}
+
+function pausePokemonAutonomy(sticker, duration = 5000) {
+  if (!sticker || sticker.dataset.type !== "pokemon") return;
+  sticker.dataset.restUntil = String(Date.now() + duration);
 }
 
 function applyPokemonReaction(sticker, reaction, options = {}) {
@@ -1245,6 +1375,26 @@ function applyPokemonReaction(sticker, reaction, options = {}) {
   sticker.dataset.reaction = normalizedReaction;
   sticker.dataset.pokeState = normalizedReaction;
   sticker.classList.add(reactionClass);
+
+  const restDurations = {
+    sleeping: 18000,
+    sit: 10000,
+    eating: 7800,
+    playing: 6200,
+    heal: 5200,
+    learn: 5200
+  };
+  if (restDurations[normalizedReaction]) {
+    pausePokemonAutonomy(sticker, restDurations[normalizedReaction]);
+  }
+  if (["sleeping", "sit"].includes(normalizedReaction)) {
+    window.setTimeout(() => {
+      if (sticker.dataset.pokeState === normalizedReaction && !sticker.classList.contains("isDragging")) {
+        clearPokemonReaction(sticker);
+        saveStickerScene();
+      }
+    }, restDurations[normalizedReaction]);
+  }
   sticker.dataset.bubble = {
     hungry: "🍔",
     sleepy: "💤",
@@ -1329,6 +1479,8 @@ function reactToNearbyToy(pokemonSticker) {
 
     if (matchesNeed) {
       applyPokemonReaction(pokemonSticker, reaction, { keep: reaction === "sleeping" });
+      const sparkleMark = reaction === "sleeping" ? "💤" : reaction === "eating" ? "❤️" : reaction === "playing" ? "✨" : "⭐";
+      showPretendSparkle(pokemonSticker, sparkleMark);
     }
   }
 }
@@ -1338,6 +1490,20 @@ function playStickerBounce(sticker) {
   void sticker.offsetWidth;
   sticker.classList.add("landed");
   window.setTimeout(() => sticker.classList.remove("landed"), 360);
+}
+
+function showPretendSparkle(sticker, mark = "✨") {
+  if (!sticker || !window.stickerBoard) return;
+
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const stickerRect = sticker.getBoundingClientRect();
+  const sparkle = document.createElement("div");
+  sparkle.className = "pretendSparkle";
+  sparkle.textContent = mark;
+  sparkle.style.left = `${stickerRect.left - boardRect.left + stickerRect.width * 0.54}px`;
+  sparkle.style.top = `${stickerRect.top - boardRect.top - 8}px`;
+  stickerBoard.appendChild(sparkle);
+  window.setTimeout(() => sparkle.remove(), 980);
 }
 
 function playPokemonTap(sticker) {
@@ -1384,7 +1550,7 @@ function moveStickerToPointer(event) {
 function startPretendAutonomy() {
   stopPretendAutonomy();
   lastPretendInteractionAt = Date.now();
-  pretendAutonomyTimer = window.setInterval(runPretendAutonomyTick, 4200);
+  pretendAutonomyTimer = window.setInterval(runPretendAutonomyTick, 2800);
 }
 
 function stopPretendAutonomy() {
@@ -1404,7 +1570,7 @@ function isPokemonBusy(sticker) {
   return !sticker
     || sticker === activeSticker
     || sticker.classList.contains("isDragging")
-    || ["sleeping", "eating", "playing"].includes(sticker.dataset.pokeState || "");
+    || Number(sticker.dataset.restUntil || 0) > Date.now();
 }
 
 function runPretendAutonomyTick() {
@@ -1428,12 +1594,13 @@ function runPretendAutonomyTick() {
 
 function walkPokemonRandomly(sticker) {
   const current = getStickerPercentPosition(sticker);
-  const deltaX = -7 + Math.random() * 14;
-  const deltaY = -4 + Math.random() * 8;
+  const deltaX = -5 + Math.random() * 10;
+  const deltaY = -3 + Math.random() * 6;
   const nextX = Math.max(4, Math.min(88, current.x + deltaX));
   const nextY = Math.max(8, Math.min(82, current.y + deltaY));
 
   sticker.dataset.facing = nextX >= current.x ? "1" : "-1";
+  sticker.dataset.lookTilt = "0";
   sticker.classList.add("isWalking");
   updateStickerTransform(sticker);
   sticker.style.left = `${nextX}%`;
@@ -1443,7 +1610,43 @@ function walkPokemonRandomly(sticker) {
     sticker.classList.remove("isWalking");
     updateStickerTransform(sticker);
     saveStickerScene();
-  }, 1900);
+  }, 2400);
+}
+
+function findNearestItemForNeed(sticker, needState) {
+  const wantedReaction = {
+    hungry: "eating",
+    sleepy: "sleeping",
+    playing: "playing"
+  }[needState];
+  if (!wantedReaction) return null;
+
+  const center = getStickerCenter(sticker);
+  let nearest = null;
+  let nearestDistance = Infinity;
+  stickerBoard.querySelectorAll(".itemSticker").forEach(item => {
+    if (getItemReaction(item) !== wantedReaction) return;
+    const distance = getDistance(center, getStickerCenter(item));
+    if (distance < nearestDistance) {
+      nearest = item;
+      nearestDistance = distance;
+    }
+  });
+  return nearest;
+}
+
+function lookAtNeedTarget(sticker, needState) {
+  const target = findNearestItemForNeed(sticker, needState);
+  if (!target) return;
+
+  const from = getStickerCenter(sticker);
+  const to = getStickerCenter(target);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  sticker.dataset.facing = dx >= 0 ? "1" : "-1";
+  sticker.dataset.lookTilt = String(Math.max(-9, Math.min(9, dy / 18)) * (dx >= 0 ? 1 : -1));
+  sticker.classList.add("isLooking");
+  updateStickerTransform(sticker);
 }
 
 function showRandomPokemonMood(sticker) {
@@ -1460,6 +1663,11 @@ function showRandomPokemonMood(sticker) {
   applyPokemonReaction(sticker, mood.state, { quiet: true, keep: true });
   sticker.dataset.bubble = mood.bubble;
 
+  if (["hungry", "sleepy", "playing"].includes(mood.state)) {
+    lookAtNeedTarget(sticker, mood.state);
+    pausePokemonAutonomy(sticker, 5200);
+  }
+
   if (mood.state === "happy") {
     window.setTimeout(() => {
       if (sticker.dataset.pokeState === "happy" && !sticker.classList.contains("isDragging")) {
@@ -1471,6 +1679,9 @@ function showRandomPokemonMood(sticker) {
     window.setTimeout(() => {
       if (sticker.dataset.pokeState === mood.state && !sticker.classList.contains("isDragging")) {
         sticker.dataset.bubble = "";
+        sticker.dataset.lookTilt = "0";
+        sticker.classList.remove("isLooking");
+        updateStickerTransform(sticker);
       }
     }, 3600);
   }
@@ -1808,10 +2019,386 @@ document.addEventListener("pointercancel", () => {
   shelfDragCandidate = null;
 });
 
+
+const hiraganaLetters = [
+  {
+    char: "あ",
+    word: "あめ",
+    reward: { category: "decoration", id: "ribbon" },
+    strokes: [
+      { d: "M88 92 C132 86 174 82 218 76", start: [88, 92], goal: [218, 76], route: [[88, 92], [132, 86], [174, 82], [218, 76]] },
+      { d: "M158 46 C151 92 148 136 151 211", start: [158, 46], goal: [151, 211], route: [[158, 46], [153, 93], [149, 142], [151, 211]] },
+      { d: "M101 169 C111 126 160 103 202 123 C245 145 231 220 154 231 C91 239 70 201 103 173 C130 150 173 151 203 171", start: [101, 169], goal: [203, 171], route: [[101, 169], [119, 125], [170, 107], [211, 139], [216, 201], [155, 231], [96, 220], [101, 174], [150, 151], [203, 171]] }
+    ]
+  },
+  {
+    char: "い",
+    word: "いす",
+    reward: { category: "furniture", id: "bookshelf" },
+    strokes: [
+      { d: "M96 75 C86 125 89 180 119 217", start: [96, 75], goal: [119, 217], route: [[96, 75], [88, 124], [91, 176], [119, 217]] },
+      { d: "M184 88 C216 121 228 164 221 207", start: [184, 88], goal: [221, 207], route: [[184, 88], [211, 119], [226, 162], [221, 207]] }
+    ]
+  },
+  {
+    char: "う",
+    word: "うみ",
+    reward: { category: "background", id: "sea" },
+    strokes: [
+      { d: "M124 62 C151 54 177 55 200 67", start: [124, 62], goal: [200, 67], route: [[124, 62], [151, 54], [177, 55], [200, 67]] },
+      { d: "M83 121 C123 101 196 99 221 130 C254 173 204 230 125 233", start: [83, 121], goal: [125, 233], route: [[83, 121], [123, 101], [196, 99], [221, 130], [243, 173], [204, 230], [125, 233]] }
+    ]
+  },
+  {
+    char: "え",
+    word: "えき",
+    reward: { category: "building", id: "restaurant" },
+    strokes: [
+      { d: "M124 58 C151 48 176 52 200 66", start: [124, 58], goal: [200, 66], route: [[124, 58], [151, 48], [176, 52], [200, 66]] },
+      { d: "M91 126 C132 113 187 108 212 121 C188 151 162 181 130 217 C157 197 176 188 192 203 C203 215 215 224 237 219", start: [91, 126], goal: [237, 219], route: [[91, 126], [132, 113], [187, 108], [212, 121], [188, 151], [162, 181], [130, 217], [157, 197], [176, 188], [192, 203], [237, 219]] }
+    ]
+  },
+  {
+    char: "お",
+    word: "おにぎり",
+    reward: { category: "food", id: "donut" },
+    strokes: [
+      { d: "M82 101 C121 96 167 88 207 75", start: [82, 101], goal: [207, 75], route: [[82, 101], [121, 96], [167, 88], [207, 75]] },
+      { d: "M147 51 C143 101 141 154 145 216", start: [147, 51], goal: [145, 216], route: [[147, 51], [144, 101], [142, 154], [145, 216]] },
+      { d: "M111 155 C82 176 78 216 116 227 C159 238 193 206 178 174 C169 154 139 147 111 155", start: [111, 155], goal: [111, 155], route: [[111, 155], [82, 176], [78, 216], [116, 227], [159, 238], [193, 206], [178, 174], [139, 147], [111, 155]] },
+      { d: "M203 119 C230 129 244 146 252 171", start: [203, 119], goal: [252, 171], route: [[203, 119], [230, 129], [244, 146], [252, 171]] }
+    ]
+  }
+];
+
+let currentHiraganaIndex = 0;
+let currentHiraganaStroke = 0;
+let hiraganaTraceActive = false;
+let hiraganaTracePoints = [];
+let hiraganaGuideFrame = 0;
+let hiraganaGuideStartedAt = 0;
+let hiraganaSparkleTimer = 0;
+
+function startHiraganaPractice(index = 0) {
+  currentLearningMode = "hiragana";
+  hideAllPanels();
+  areaMenu.classList.add("hidden");
+  placeholderPanel.classList.add("hiraganaPanel");
+  placeholderPanel.classList.remove("hidden");
+  currentHiraganaIndex = Math.max(0, Math.min(hiraganaLetters.length - 1, index));
+  currentHiraganaStroke = 0;
+  renderHiraganaPractice();
+}
+
+function renderHiraganaPractice() {
+  stopHiraganaGuide();
+  const letter = hiraganaLetters[currentHiraganaIndex];
+  placeholderPanel.innerHTML = `
+    <div class="hiraganaShell">
+      <div class="hiraganaHeader">
+        <div>
+          <p class="eyebrow">📚 ひらがな広場</p>
+          <h2>「${letter.char}」を なぞろう</h2>
+        </div>
+        <div class="hiraganaWord">${letter.word}</div>
+      </div>
+
+      <div class="hiraganaLetterTabs">
+        ${hiraganaLetters.map((item, index) => `
+          <button type="button" class="hiraganaTab ${index === currentHiraganaIndex ? "isActive" : ""}" onclick="selectHiraganaLetter(${index})">${item.char}</button>
+        `).join("")}
+      </div>
+
+      <div class="hiraganaBoardWrap">
+        <svg id="hiraganaBoard" class="hiraganaBoard" viewBox="0 0 300 300" aria-label="ひらがなのなぞり書き">
+          <defs>
+            <filter id="hiraganaGlow">
+              <feGaussianBlur stdDeviation="3.5" result="blur"></feGaussianBlur>
+              <feMerge>
+                <feMergeNode in="blur"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+              </feMerge>
+            </filter>
+          </defs>
+          <text x="150" y="220" class="hiraganaGhost">${letter.char}</text>
+          <g id="hiraganaStrokeLayer">
+            ${letter.strokes.map((stroke, index) => `
+              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.d}" />
+            `).join("")}
+          </g>
+          <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" />
+          <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="13" />
+          <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="12" />
+          <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="11" />
+        </svg>
+        <div id="hiraganaSparkles" class="hiraganaSparkles"></div>
+      </div>
+
+      <div class="hiraganaStatus">
+        <strong>${currentHiraganaStroke + 1}かくめ</strong>
+        <span>ひかる まるを ゆっくり おいかけよう</span>
+      </div>
+      <div class="hiraganaActions">
+        <button type="button" onclick="resetHiraganaLetter()">もういちど</button>
+        <button type="button" onclick="selectHiraganaLetter(${(currentHiraganaIndex + 1) % hiraganaLetters.length})">つぎのもじ</button>
+      </div>
+    </div>
+  `;
+
+  setupHiraganaBoard();
+}
+
+function selectHiraganaLetter(index) {
+  currentHiraganaIndex = Math.max(0, Math.min(hiraganaLetters.length - 1, index));
+  currentHiraganaStroke = 0;
+  renderHiraganaPractice();
+}
+
+function resetHiraganaLetter() {
+  currentHiraganaStroke = 0;
+  renderHiraganaPractice();
+}
+
+function setupHiraganaBoard() {
+  const board = document.getElementById("hiraganaBoard");
+  if (!board) return;
+
+  positionHiraganaPoints();
+  board.addEventListener("pointerdown", startHiraganaTrace);
+  board.addEventListener("pointermove", moveHiraganaTrace);
+  board.addEventListener("pointerup", finishHiraganaTrace);
+  board.addEventListener("pointercancel", finishHiraganaTrace);
+  startHiraganaGuide();
+}
+
+function getCurrentHiraganaStroke() {
+  return hiraganaLetters[currentHiraganaIndex]?.strokes[currentHiraganaStroke] || null;
+}
+
+function positionHiraganaPoints() {
+  const stroke = getCurrentHiraganaStroke();
+  const start = document.getElementById("hiraganaStartPoint");
+  const goal = document.getElementById("hiraganaGoalPoint");
+  if (!stroke || !start || !goal) return;
+
+  start.setAttribute("cx", stroke.start[0]);
+  start.setAttribute("cy", stroke.start[1]);
+  goal.setAttribute("cx", stroke.goal[0]);
+  goal.setAttribute("cy", stroke.goal[1]);
+}
+
+function getHiraganaSvgPoint(event) {
+  const board = document.getElementById("hiraganaBoard");
+  const rect = board.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * 300,
+    y: ((event.clientY - rect.top) / rect.height) * 300
+  };
+}
+
+function getPointDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getRouteProgress(point, route) {
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+
+  route.forEach((routePoint, index) => {
+    const distance = getPointDistance(point, { x: routePoint[0], y: routePoint[1] });
+    if (distance <= bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  return {
+    ratio: route.length <= 1 ? 1 : bestIndex / (route.length - 1),
+    distance: bestDistance
+  };
+}
+
+function startHiraganaTrace(event) {
+  const stroke = getCurrentHiraganaStroke();
+  if (!stroke) return;
+
+  const point = getHiraganaSvgPoint(event);
+  const start = { x: stroke.start[0], y: stroke.start[1] };
+  if (getPointDistance(point, start) > 72) {
+    pulseHiraganaPoint("hiraganaStartPoint");
+    return;
+  }
+
+  event.preventDefault();
+  hiraganaTraceActive = true;
+  hiraganaTracePoints = [point];
+  updateHiraganaTraceLine();
+}
+
+function moveHiraganaTrace(event) {
+  if (!hiraganaTraceActive) return;
+
+  event.preventDefault();
+  const point = getHiraganaSvgPoint(event);
+  hiraganaTracePoints.push(point);
+  updateHiraganaTraceLine();
+
+  if (isHiraganaStrokeComplete(point)) {
+    completeHiraganaStroke();
+  }
+}
+
+function finishHiraganaTrace() {
+  hiraganaTraceActive = false;
+}
+
+function updateHiraganaTraceLine() {
+  const line = document.getElementById("hiraganaTraceLine");
+  if (!line) return;
+
+  line.setAttribute("points", hiraganaTracePoints.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" "));
+}
+
+function isHiraganaStrokeComplete(point) {
+  const stroke = getCurrentHiraganaStroke();
+  if (!stroke) return false;
+
+  const goal = { x: stroke.goal[0], y: stroke.goal[1] };
+  const progress = getRouteProgress(point, stroke.route);
+  const enoughMovement = hiraganaTracePoints.length >= 6;
+  return enoughMovement && getPointDistance(point, goal) <= 78 && progress.ratio >= 0.45 && progress.distance <= 96;
+}
+
+function completeHiraganaStroke() {
+  if (!hiraganaTraceActive) return;
+
+  hiraganaTraceActive = false;
+  playSound("correct.mp3");
+  showHiraganaSparkle();
+  currentHiraganaStroke++;
+
+  const letter = hiraganaLetters[currentHiraganaIndex];
+  if (currentHiraganaStroke >= letter.strokes.length) {
+    completeHiraganaLetter();
+    return;
+  }
+
+  window.setTimeout(renderHiraganaPractice, 520);
+}
+
+function completeHiraganaLetter() {
+  stopHiraganaGuide();
+  const letter = hiraganaLetters[currentHiraganaIndex];
+  const completed = JSON.parse(localStorage.getItem("hiraganaCompleted") || "[]");
+  const isFirstClear = !completed.includes(letter.char);
+
+  if (isFirstClear) {
+    completed.push(letter.char);
+    localStorage.setItem("hiraganaCompleted", JSON.stringify(completed));
+  }
+
+  pendingHiraganaNextIndex = (currentHiraganaIndex + 1) % hiraganaLetters.length;
+  window.setTimeout(() => {
+    placeholderPanel.innerHTML = `
+      <div class="hiraganaClear">
+        <p class="eyebrow">できたね</p>
+        <div class="hiraganaClearLetter">${letter.char}</div>
+        <h2>「${letter.char}」が かけたよ</h2>
+        <p>ポケモンが あらわれたよ。</p>
+      </div>
+    `;
+    window.setTimeout(() => startHiraganaPokemonEncounter(letter), 760);
+  }, 620);
+}
+
+function startHiraganaPokemonEncounter(letter) {
+  currentLearningMode = "hiragana";
+  hideAllPanels();
+  gameScreen.classList.remove("hidden");
+  placeholderPanel.classList.add("hidden");
+  placeholderPanel.classList.remove("hiraganaPanel");
+  resetCatchLock();
+  catchCount = 0;
+
+  ballImg.classList.remove("throw", "shake-3", "shake-once");
+  ballImg.style.transform = "";
+  ballImg.style.display = "none";
+  pokemonImage.style.display = "block";
+  catchEffect.classList.remove("catch-show");
+  catchEffect.style.display = "none";
+
+  currentPokemon = getRandomPokemon();
+  pokemonName.textContent = currentPokemon.name;
+  pokemonImage.src = getPokemonImage(currentPokemon.pokemonId);
+  questionArea.classList.add("hidden");
+  catchArea.classList.remove("hidden");
+  nextArea.classList.add("hidden");
+  nextButton.textContent = "つぎのもじ";
+  message.textContent = `「${letter.char}」が かけた！ ${currentPokemon.name}が あらわれた！`;
+
+  const hud = document.getElementById("learningRewardHud");
+  if (hud) hud.classList.add("hidden");
+  window.setTimeout(() => playCry(currentPokemon.pokemonId), 300);
+}
+
+function pulseHiraganaPoint(id) {
+  const point = document.getElementById(id);
+  if (!point) return;
+  point.classList.remove("isPulse");
+  void point.getBoundingClientRect();
+  point.classList.add("isPulse");
+  window.setTimeout(() => point.classList.remove("isPulse"), 520);
+}
+
+function showHiraganaSparkle() {
+  const wrap = document.getElementById("hiraganaSparkles");
+  if (!wrap) return;
+
+  clearTimeout(hiraganaSparkleTimer);
+  wrap.innerHTML = ["きら", "ぴか", "できた"].map((text, index) => `
+    <span style="--x:${24 + index * 24}%;--delay:${index * 70}ms">${text}</span>
+  `).join("");
+  hiraganaSparkleTimer = window.setTimeout(() => {
+    if (wrap) wrap.innerHTML = "";
+  }, 900);
+}
+
+function startHiraganaGuide() {
+  stopHiraganaGuide();
+  const guide = document.getElementById("hiraganaGuidePoint");
+  const path = document.getElementById(`hiraganaStroke${currentHiraganaStroke}`);
+  if (!guide || !path) return;
+
+  const length = path.getTotalLength();
+  hiraganaGuideStartedAt = performance.now();
+
+  const animate = (now) => {
+    const elapsed = (now - hiraganaGuideStartedAt) % 3600;
+    const t = elapsed / 3600;
+    const point = path.getPointAtLength(length * t);
+    guide.setAttribute("cx", point.x);
+    guide.setAttribute("cy", point.y);
+    hiraganaGuideFrame = requestAnimationFrame(animate);
+  };
+
+  hiraganaGuideFrame = requestAnimationFrame(animate);
+}
+
+function stopHiraganaGuide() {
+  if (hiraganaGuideFrame) {
+    cancelAnimationFrame(hiraganaGuideFrame);
+    hiraganaGuideFrame = 0;
+  }
+}
 function startAdditionGame() {
+  currentLearningMode = "addition";
+  if (window.nextButton) {
+    nextButton.textContent = "つぎのもんだい";
+  }
   hideAllPanels();
   gameScreen.classList.remove("hidden");
   catchCount = 0;
+  renderLearningHud();
   loadPokemon();
 }
 
@@ -1852,6 +2439,7 @@ function createQuestion() {
   }
 
   visualQuestion.innerHTML = hintUsed ? `${makeGroup(a)}<div class="plusSign">＋</div>${makeGroup(b)}` : "";
+  renderLearningHud();
 }
 
 function showHint() {
@@ -1967,12 +2555,19 @@ async function throwBall() {
 
 function nextPokemon() {
   resetCatchLock();
-  loadPokemon();
   ballImg.style.display = "none";
   ballImg.classList.remove("shake-3", "throw", "shake-once");
   ballImg.style.transform = "";
   catchArea.classList.add("hidden");
   nextArea.classList.add("hidden");
+
+  if (currentLearningMode === "hiragana") {
+    nextButton.textContent = "つぎのもんだい";
+    startHiraganaPractice(pendingHiraganaNextIndex);
+    return;
+  }
+
+  loadPokemon();
 }
 
 function catchPokemon() {
@@ -2085,6 +2680,16 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
