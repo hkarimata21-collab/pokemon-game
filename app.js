@@ -2020,56 +2020,67 @@ document.addEventListener("pointercancel", () => {
 });
 
 
-const hiraganaLetters = [
-  {
-    char: "あ",
-    word: "あめ",
-    viewBox: "0 0 100 100",
-    strokes: [
-      { path: "M26 30 C39 29 56 26 74 22" },
-      { path: "M52 15 C49 32 48 52 51 77" },
-      { path: "M36 57 C40 43 54 35 67 40 C83 47 81 69 65 79 C50 89 29 84 26 70 C23 58 34 49 49 51 C62 53 71 61 76 73" }
-    ]
-  },
-  {
-    char: "い",
-    word: "いす",
-    viewBox: "0 0 100 100",
-    strokes: [
-      { path: "M32 26 C27 43 28 66 40 78" },
-      { path: "M62 32 C73 44 77 62 73 76" }
-    ]
-  },
-  {
-    char: "う",
-    word: "うみ",
-    viewBox: "0 0 100 100",
-    strokes: [
-      { path: "M39 20 C48 16 58 17 67 23" },
-      { path: "M27 43 C42 35 68 35 76 48 C87 66 66 83 42 82" }
-    ]
-  },
-  {
-    char: "え",
-    word: "えき",
-    viewBox: "0 0 100 100",
-    strokes: [
-      { path: "M39 19 C48 15 58 17 67 23" },
-      { path: "M29 43 C43 38 62 36 73 42 C63 52 54 61 43 74 C51 68 58 66 64 72 C69 79 76 82 84 77" }
-    ]
-  },
-  {
-    char: "お",
-    word: "おにぎり",
-    viewBox: "0 0 100 100",
-    strokes: [
-      { path: "M25 27 C39 26 55 23 70 19" },
-      { path: "M49 14 C46 32 44 53 44 77" },
-      { path: "M38 50 C28 54 22 63 24 72 C27 86 48 88 60 78 C72 68 67 55 55 51 C44 47 33 53 30 64" },
-      { path: "M67 38 C78 42 85 51 88 63" }
+const hiraganaData = {
+  version: 2,
+  kind: "centerline-svg",
+  viewBox: "0 0 100 100",
+  groups: {
+    basicVowels: [
+      {
+        char: "あ",
+        word: "あめ",
+        strokes: [
+          { id: "a-1", centerPath: "M24 32 C39 31 56 28 74 24" },
+          { id: "a-2", centerPath: "M53 15 C50 34 49 55 52 80" },
+          { id: "a-3", centerPath: "M37 57 C41 45 53 38 66 41 C79 45 83 58 77 70 C70 83 53 89 40 84 C28 79 25 68 31 59 C38 49 51 48 63 54 C72 59 77 68 80 77" }
+        ]
+      },
+      {
+        char: "い",
+        word: "いす",
+        strokes: [
+          { id: "i-1", centerPath: "M33 25 C28 42 29 64 40 78" },
+          { id: "i-2", centerPath: "M62 32 C73 44 77 62 73 76" }
+        ]
+      },
+      {
+        char: "う",
+        word: "うみ",
+        strokes: [
+          { id: "u-1", centerPath: "M39 20 C48 16 58 17 67 23" },
+          { id: "u-2", centerPath: "M27 43 C42 36 67 35 76 48 C87 65 67 82 42 82" }
+        ]
+      },
+      {
+        char: "え",
+        word: "えき",
+        strokes: [
+          { id: "e-1", centerPath: "M39 20 C48 15 58 17 67 23" },
+          { id: "e-2", centerPath: "M29 43 C43 38 62 36 73 42 C64 51 55 61 43 74 C51 68 58 66 64 72 C69 79 76 82 84 77" }
+        ]
+      },
+      {
+        char: "お",
+        word: "おにぎり",
+        strokes: [
+          { id: "o-1", centerPath: "M25 30 C39 29 55 26 70 22" },
+          { id: "o-2", centerPath: "M50 15 C47 33 46 53 46 78" },
+          { id: "o-3", centerPath: "M39 52 C31 55 25 62 25 71 C25 82 38 88 52 84 C66 80 72 68 68 58 C64 49 52 46 42 50 C33 54 29 63 31 71 C33 78 42 80 50 76" },
+          { id: "o-4", centerPath: "M68 39 C80 44 87 54 89 66" }
+        ]
+      }
     ]
   }
-];
+};
+
+const hiraganaLetters = hiraganaData.groups.basicVowels.map(letter => ({
+  ...letter,
+  viewBox: letter.viewBox || hiraganaData.viewBox,
+  strokes: letter.strokes.map(stroke => ({
+    ...stroke,
+    path: stroke.centerPath
+  }))
+}));
 
 let currentHiraganaIndex = 0;
 let currentHiraganaStroke = 0;
@@ -2121,17 +2132,17 @@ function renderHiraganaPractice() {
             </filter>
           </defs>
           <g class="hiraganaGhostPaths" aria-hidden="true">
-            ${letter.strokes.map(stroke => `<path class="hiraganaGhostPath" d="${stroke.path}" />`).join("")}
+            ${letter.strokes.map(stroke => `<path class="hiraganaGhostPath" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />`).join("")}
           </g>
           <g id="hiraganaStrokeLayer">
             ${letter.strokes.map((stroke, index) => `
-              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.path}" />
+              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             `).join("")}
           </g>
-          <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" />
-          <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="4.2" />
-          <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="4" />
-          <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="3.8" />
+          <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+          <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="3.9" />
+          <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="3.7" />
+          <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="3.5" />
         </svg>
         <div id="hiraganaSparkles" class="hiraganaSparkles"></div>
       </div>
@@ -2694,6 +2705,10 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
+
 
 
 
