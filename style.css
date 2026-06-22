@@ -3060,19 +3060,23 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   touch-action: none;
 }
 
-.hiraganaGhost {
-  dominant-baseline: middle;
-  text-anchor: middle;
-  font-size: 220px;
-  font-weight: 900;
-  fill: rgba(55, 132, 137, 0.08);
+.hiraganaGhostPaths,
+.hiraganaGhostPath {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hiraganaGhostPath {
+  stroke: rgba(55, 132, 137, 0.11);
+  stroke-width: 4.8;
 }
 
 .hiraganaStroke {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 22;
+  stroke-width: 4.8;
 }
 
 .hiraganaStroke.isWaiting {
@@ -3094,7 +3098,7 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   stroke: #39b6ff;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 18;
+  stroke-width: 3.8;
   opacity: 0.82;
 }
 
@@ -3107,19 +3111,19 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 .hiraganaStartPoint {
   fill: #26d07c;
   stroke: #fff;
-  stroke-width: 6;
+  stroke-width: 1.2;
 }
 
 .hiraganaGoalPoint {
   fill: #ff7eb6;
   stroke: #fff;
-  stroke-width: 6;
+  stroke-width: 1.2;
 }
 
 .hiraganaGuidePoint {
   fill: #ffcb05;
   stroke: #fff;
-  stroke-width: 6;
+  stroke-width: 1.2;
   filter: drop-shadow(0 4px 5px rgba(116, 82, 0, 0.25));
 }
 
@@ -3197,8 +3201,8 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 @keyframes hiraganaPointPulse {
-  0%, 100% { r: 13; }
-  45% { r: 22; }
+  0%, 100% { r: 3.7; }
+  45% { r: 6.1; }
 }
 
 @keyframes hiraganaSparklePop {
@@ -3237,3 +3241,11 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   }
 }
 
+
+
+/* Hiragana fill safety */
+.hiraganaGhostPath,
+.hiraganaStroke,
+.hiraganaTraceLine {
+  fill: none !important;
+}
