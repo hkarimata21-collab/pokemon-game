@@ -2024,49 +2024,49 @@ const hiraganaLetters = [
   {
     char: "あ",
     word: "あめ",
-    reward: { category: "decoration", id: "ribbon" },
+    viewBox: "0 0 100 100",
     strokes: [
-      { d: "M88 92 C132 86 174 82 218 76", start: [88, 92], goal: [218, 76], route: [[88, 92], [132, 86], [174, 82], [218, 76]] },
-      { d: "M158 46 C151 92 148 136 151 211", start: [158, 46], goal: [151, 211], route: [[158, 46], [153, 93], [149, 142], [151, 211]] },
-      { d: "M101 169 C111 126 160 103 202 123 C245 145 231 220 154 231 C91 239 70 201 103 173 C130 150 173 151 203 171", start: [101, 169], goal: [203, 171], route: [[101, 169], [119, 125], [170, 107], [211, 139], [216, 201], [155, 231], [96, 220], [101, 174], [150, 151], [203, 171]] }
+      { path: "M26 30 C39 29 56 26 74 22" },
+      { path: "M52 15 C49 32 48 52 51 77" },
+      { path: "M36 57 C40 43 54 35 67 40 C83 47 81 69 65 79 C50 89 29 84 26 70 C23 58 34 49 49 51 C62 53 71 61 76 73" }
     ]
   },
   {
     char: "い",
     word: "いす",
-    reward: { category: "furniture", id: "bookshelf" },
+    viewBox: "0 0 100 100",
     strokes: [
-      { d: "M96 75 C86 125 89 180 119 217", start: [96, 75], goal: [119, 217], route: [[96, 75], [88, 124], [91, 176], [119, 217]] },
-      { d: "M184 88 C216 121 228 164 221 207", start: [184, 88], goal: [221, 207], route: [[184, 88], [211, 119], [226, 162], [221, 207]] }
+      { path: "M32 26 C27 43 28 66 40 78" },
+      { path: "M62 32 C73 44 77 62 73 76" }
     ]
   },
   {
     char: "う",
     word: "うみ",
-    reward: { category: "background", id: "sea" },
+    viewBox: "0 0 100 100",
     strokes: [
-      { d: "M124 62 C151 54 177 55 200 67", start: [124, 62], goal: [200, 67], route: [[124, 62], [151, 54], [177, 55], [200, 67]] },
-      { d: "M83 121 C123 101 196 99 221 130 C254 173 204 230 125 233", start: [83, 121], goal: [125, 233], route: [[83, 121], [123, 101], [196, 99], [221, 130], [243, 173], [204, 230], [125, 233]] }
+      { path: "M39 20 C48 16 58 17 67 23" },
+      { path: "M27 43 C42 35 68 35 76 48 C87 66 66 83 42 82" }
     ]
   },
   {
     char: "え",
     word: "えき",
-    reward: { category: "building", id: "restaurant" },
+    viewBox: "0 0 100 100",
     strokes: [
-      { d: "M124 58 C151 48 176 52 200 66", start: [124, 58], goal: [200, 66], route: [[124, 58], [151, 48], [176, 52], [200, 66]] },
-      { d: "M91 126 C132 113 187 108 212 121 C188 151 162 181 130 217 C157 197 176 188 192 203 C203 215 215 224 237 219", start: [91, 126], goal: [237, 219], route: [[91, 126], [132, 113], [187, 108], [212, 121], [188, 151], [162, 181], [130, 217], [157, 197], [176, 188], [192, 203], [237, 219]] }
+      { path: "M39 19 C48 15 58 17 67 23" },
+      { path: "M29 43 C43 38 62 36 73 42 C63 52 54 61 43 74 C51 68 58 66 64 72 C69 79 76 82 84 77" }
     ]
   },
   {
     char: "お",
     word: "おにぎり",
-    reward: { category: "food", id: "donut" },
+    viewBox: "0 0 100 100",
     strokes: [
-      { d: "M82 101 C121 96 167 88 207 75", start: [82, 101], goal: [207, 75], route: [[82, 101], [121, 96], [167, 88], [207, 75]] },
-      { d: "M147 51 C143 101 141 154 145 216", start: [147, 51], goal: [145, 216], route: [[147, 51], [144, 101], [142, 154], [145, 216]] },
-      { d: "M111 155 C82 176 78 216 116 227 C159 238 193 206 178 174 C169 154 139 147 111 155", start: [111, 155], goal: [111, 155], route: [[111, 155], [82, 176], [78, 216], [116, 227], [159, 238], [193, 206], [178, 174], [139, 147], [111, 155]] },
-      { d: "M203 119 C230 129 244 146 252 171", start: [203, 119], goal: [252, 171], route: [[203, 119], [230, 129], [244, 146], [252, 171]] }
+      { path: "M25 27 C39 26 55 23 70 19" },
+      { path: "M49 14 C46 32 44 53 44 77" },
+      { path: "M38 50 C28 54 22 63 24 72 C27 86 48 88 60 78 C72 68 67 55 55 51 C44 47 33 53 30 64" },
+      { path: "M67 38 C78 42 85 51 88 63" }
     ]
   }
 ];
@@ -2110,26 +2110,28 @@ function renderHiraganaPractice() {
       </div>
 
       <div class="hiraganaBoardWrap">
-        <svg id="hiraganaBoard" class="hiraganaBoard" viewBox="0 0 300 300" aria-label="ひらがなのなぞり書き">
+        <svg id="hiraganaBoard" class="hiraganaBoard" viewBox="${letter.viewBox}" aria-label="ひらがなのなぞり書き">
           <defs>
             <filter id="hiraganaGlow">
-              <feGaussianBlur stdDeviation="3.5" result="blur"></feGaussianBlur>
+              <feGaussianBlur stdDeviation="1.5" result="blur"></feGaussianBlur>
               <feMerge>
                 <feMergeNode in="blur"></feMergeNode>
                 <feMergeNode in="SourceGraphic"></feMergeNode>
               </feMerge>
             </filter>
           </defs>
-          <text x="150" y="220" class="hiraganaGhost">${letter.char}</text>
+          <g class="hiraganaGhostPaths" aria-hidden="true">
+            ${letter.strokes.map(stroke => `<path class="hiraganaGhostPath" d="${stroke.path}" />`).join("")}
+          </g>
           <g id="hiraganaStrokeLayer">
             ${letter.strokes.map((stroke, index) => `
-              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.d}" />
+              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.path}" />
             `).join("")}
           </g>
           <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" />
-          <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="13" />
-          <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="12" />
-          <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="11" />
+          <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="4.2" />
+          <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="4" />
+          <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="3.8" />
         </svg>
         <div id="hiraganaSparkles" class="hiraganaSparkles"></div>
       </div>
@@ -2175,24 +2177,32 @@ function getCurrentHiraganaStroke() {
   return hiraganaLetters[currentHiraganaIndex]?.strokes[currentHiraganaStroke] || null;
 }
 
+function getCurrentHiraganaPathElement() {
+  return document.getElementById(`hiraganaStroke${currentHiraganaStroke}`);
+}
+
 function positionHiraganaPoints() {
-  const stroke = getCurrentHiraganaStroke();
+  const path = getCurrentHiraganaPathElement();
   const start = document.getElementById("hiraganaStartPoint");
   const goal = document.getElementById("hiraganaGoalPoint");
-  if (!stroke || !start || !goal) return;
+  if (!path || !start || !goal) return;
 
-  start.setAttribute("cx", stroke.start[0]);
-  start.setAttribute("cy", stroke.start[1]);
-  goal.setAttribute("cx", stroke.goal[0]);
-  goal.setAttribute("cy", stroke.goal[1]);
+  const length = path.getTotalLength();
+  const startPoint = path.getPointAtLength(0);
+  const goalPoint = path.getPointAtLength(length);
+  start.setAttribute("cx", startPoint.x);
+  start.setAttribute("cy", startPoint.y);
+  goal.setAttribute("cx", goalPoint.x);
+  goal.setAttribute("cy", goalPoint.y);
 }
 
 function getHiraganaSvgPoint(event) {
   const board = document.getElementById("hiraganaBoard");
   const rect = board.getBoundingClientRect();
+  const viewBox = board.viewBox.baseVal;
   return {
-    x: ((event.clientX - rect.left) / rect.width) * 300,
-    y: ((event.clientY - rect.top) / rect.height) * 300
+    x: viewBox.x + ((event.clientX - rect.left) / rect.width) * viewBox.width,
+    y: viewBox.y + ((event.clientY - rect.top) / rect.height) * viewBox.height
   };
 }
 
@@ -2200,31 +2210,34 @@ function getPointDistance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function getRouteProgress(point, route) {
-  let bestIndex = 0;
+function getPathProgress(point, path, samples = 46) {
+  const length = path.getTotalLength();
+  let bestLength = 0;
   let bestDistance = Infinity;
 
-  route.forEach((routePoint, index) => {
-    const distance = getPointDistance(point, { x: routePoint[0], y: routePoint[1] });
+  for (let i = 0; i <= samples; i++) {
+    const sampleLength = length * (i / samples);
+    const sample = path.getPointAtLength(sampleLength);
+    const distance = getPointDistance(point, sample);
     if (distance <= bestDistance) {
       bestDistance = distance;
-      bestIndex = index;
+      bestLength = sampleLength;
     }
-  });
+  }
 
   return {
-    ratio: route.length <= 1 ? 1 : bestIndex / (route.length - 1),
+    ratio: length <= 0 ? 1 : bestLength / length,
     distance: bestDistance
   };
 }
 
 function startHiraganaTrace(event) {
-  const stroke = getCurrentHiraganaStroke();
-  if (!stroke) return;
+  const path = getCurrentHiraganaPathElement();
+  if (!path) return;
 
   const point = getHiraganaSvgPoint(event);
-  const start = { x: stroke.start[0], y: stroke.start[1] };
-  if (getPointDistance(point, start) > 72) {
+  const start = path.getPointAtLength(0);
+  if (getPointDistance(point, start) > 22) {
     pulseHiraganaPoint("hiraganaStartPoint");
     return;
   }
@@ -2260,13 +2273,14 @@ function updateHiraganaTraceLine() {
 }
 
 function isHiraganaStrokeComplete(point) {
-  const stroke = getCurrentHiraganaStroke();
-  if (!stroke) return false;
+  const path = getCurrentHiraganaPathElement();
+  if (!path) return false;
 
-  const goal = { x: stroke.goal[0], y: stroke.goal[1] };
-  const progress = getRouteProgress(point, stroke.route);
-  const enoughMovement = hiraganaTracePoints.length >= 6;
-  return enoughMovement && getPointDistance(point, goal) <= 78 && progress.ratio >= 0.45 && progress.distance <= 96;
+  const length = path.getTotalLength();
+  const goal = path.getPointAtLength(length);
+  const progress = getPathProgress(point, path);
+  const enoughMovement = hiraganaTracePoints.length >= 5;
+  return enoughMovement && getPointDistance(point, goal) <= 24 && progress.ratio >= 0.5 && progress.distance <= 24;
 }
 
 function completeHiraganaStroke() {
@@ -2680,6 +2694,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
