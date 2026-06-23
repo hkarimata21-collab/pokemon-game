@@ -3068,15 +3068,15 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 .hiraganaGhostPath {
-  stroke: rgba(55, 132, 137, 0.11);
-  stroke-width: 4.8;
+  stroke: rgba(55, 132, 137, 0.095);
+  stroke-width: 4.25;
 }
 
 .hiraganaStroke {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 4.8;
+  stroke-width: 4.25;
 }
 
 .hiraganaStroke.isWaiting {
@@ -3098,7 +3098,7 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   stroke: #39b6ff;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 3.8;
+  stroke-width: 3.45;
   opacity: 0.82;
 }
 
@@ -3201,8 +3201,8 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 @keyframes hiraganaPointPulse {
-  0%, 100% { r: 3.7; }
-  45% { r: 6.1; }
+  0%, 100% { r: 3.9; }
+  45% { r: 5.8; }
 }
 
 @keyframes hiraganaSparklePop {
@@ -3249,3 +3249,4 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 .hiraganaTraceLine {
   fill: none !important;
 }
+

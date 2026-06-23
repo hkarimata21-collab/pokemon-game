@@ -2388,21 +2388,27 @@ function showHiraganaSparkle() {
   }, 900);
 }
 
+function moveHiraganaGuideOnPath(path, guide, progress) {
+  const length = path.getTotalLength();
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const point = path.getPointAtLength(length * clampedProgress);
+  guide.setAttribute("cx", point.x);
+  guide.setAttribute("cy", point.y);
+}
+
 function startHiraganaGuide() {
   stopHiraganaGuide();
   const guide = document.getElementById("hiraganaGuidePoint");
-  const path = document.getElementById(`hiraganaStroke${currentHiraganaStroke}`);
+  const path = getCurrentHiraganaPathElement();
   if (!guide || !path) return;
 
-  const length = path.getTotalLength();
   hiraganaGuideStartedAt = performance.now();
+  moveHiraganaGuideOnPath(path, guide, 0);
 
   const animate = (now) => {
     const elapsed = (now - hiraganaGuideStartedAt) % 3600;
-    const t = elapsed / 3600;
-    const point = path.getPointAtLength(length * t);
-    guide.setAttribute("cx", point.x);
-    guide.setAttribute("cy", point.y);
+    const progress = elapsed / 3600;
+    moveHiraganaGuideOnPath(path, guide, progress);
     hiraganaGuideFrame = requestAnimationFrame(animate);
   };
 
@@ -2705,6 +2711,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
