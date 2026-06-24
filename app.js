@@ -2032,7 +2032,7 @@ const hiraganaData = {
         strokes: [
           { id: "a-1", centerPath: "M24 31 C39 30 56 27 75 23" },
           { id: "a-2", centerPath: "M53 15 C50 32 49 52 51 80" },
-          { id: "a-3", centerPath: "M69 39 C58 48 47 57 36 66 C30 72 32 79 42 82 C58 87 78 80 82 68 C86 56 73 51 58 54 C45 57 36 64 34 72 C32 81 44 87 60 84 C72 82 81 77 84 72" }
+          { id: "a-3", centerPath: "M69 39 C58 48 47 57 36 66 C30 61 34 52 48 48 C66 43 82 51 84 64 C86 78 70 88 50 86 C35 84 27 76 31 68 C34 61 44 57 58 59 C73 61 82 69 83 77" }
         ]
       },
       {
@@ -2716,6 +2716,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
