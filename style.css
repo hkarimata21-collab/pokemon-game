@@ -3250,3 +3250,9 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   fill: none !important;
 }
 
+
+/* Keep hiragana guide locked to SVG path */
+.hiraganaGuidePoint {
+  transition: none !important;
+  will-change: auto;
+}
