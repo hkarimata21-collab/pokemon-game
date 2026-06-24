@@ -3062,44 +3062,46 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 
 .hiraganaGhostPaths,
 .hiraganaGhostPath {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: rgba(45, 93, 97, 0.16);
+  stroke-width: 6.2;
 }
 
 .hiraganaGhostPath {
-  stroke: rgba(55, 132, 137, 0.095);
-  stroke-width: 4.25;
+  stroke: rgba(45, 93, 97, 0.16);
+  stroke-width: 6.2;
 }
 
 .hiraganaStroke {
   fill: none;
+  stroke: transparent !important;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 4.25;
+  stroke-width: 14;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.hiraganaStroke.isWaiting {
-  stroke: rgba(73, 117, 127, 0.12);
-}
-
-.hiraganaStroke.isDone {
-  stroke: rgba(66, 191, 126, 0.8);
-}
-
+.hiraganaStroke.isWaiting,
+.hiraganaStroke.isDone,
 .hiraganaStroke.isCurrent {
-  stroke: rgba(255, 196, 36, 0.55);
-  filter: url(#hiraganaGlow);
-  animation: hiraganaCurrentPulse 1400ms ease-in-out infinite;
+  stroke: transparent !important;
+  filter: none;
+  animation: none;
 }
 
 .hiraganaTraceLine {
   fill: none;
-  stroke: #39b6ff;
+  stroke: #28aef2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 3.45;
-  opacity: 0.82;
+  stroke-width: 5.2;
+  opacity: 0.9;
+  filter: drop-shadow(0 3px 3px rgba(14, 109, 170, 0.18));
+}
+
+.hiraganaTraceLine.isDone {
+  stroke: #33c788;
+  opacity: 0.72;
 }
 
 .hiraganaStartPoint,
@@ -3263,4 +3265,16 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 .hiraganaGoalPoint {
   transition-property: none !important;
   transform: none !important;
+}
+
+
+
+
+/* Force hidden judge paths: visible writing should only be the child's trace. */
+#hiraganaStrokeLayer .hiraganaStroke {
+  visibility: hidden !important;
+  stroke: transparent !important;
+  opacity: 0 !important;
+  filter: none !important;
+  animation: none !important;
 }

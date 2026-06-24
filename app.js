@@ -2138,7 +2138,7 @@ function renderHiraganaPractice() {
           </g>
           <g id="hiraganaStrokeLayer">
             ${letter.strokes.map((stroke, index) => `
-              <path id="hiraganaStroke${index}" data-guide-source="${index === currentHiraganaStroke ? "true" : "false"}" data-stroke-id="${stroke.id}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              <path id="hiraganaStroke${index}" data-guide-source="${index === currentHiraganaStroke ? "true" : "false"}" data-stroke-id="${stroke.id}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" visibility="hidden" style="stroke: transparent !important; opacity: 0 !important;" />
             `).join("")}
           </g>
           <g id="hiraganaTraceLayer">
@@ -2731,6 +2731,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
