@@ -2021,7 +2021,7 @@ document.addEventListener("pointercancel", () => {
 
 
 const hiraganaData = {
-  version: 2,
+  version: 3,
   kind: "centerline-svg",
   viewBox: "0 0 100 100",
   groups: {
@@ -2030,9 +2030,9 @@ const hiraganaData = {
         char: "あ",
         word: "あめ",
         strokes: [
-          { id: "a-1", centerPath: "M24 32 C39 31 56 28 74 24" },
-          { id: "a-2", centerPath: "M53 15 C50 34 49 55 52 80" },
-          { id: "a-3", centerPath: "M37 57 C41 45 53 38 66 41 C79 45 83 58 77 70 C70 83 53 89 40 84 C28 79 25 68 31 59 C38 49 51 48 63 54 C72 59 77 68 80 77" }
+          { id: "a-1", centerPath: "M24 31 C39 30 56 27 75 23" },
+          { id: "a-2", centerPath: "M53 15 C50 32 49 52 51 80" },
+          { id: "a-3", centerPath: "M69 39 C59 48 47 57 36 66 C26 75 31 86 47 87 C64 88 80 80 82 69 C84 58 72 52 57 54 C43 56 34 64 32 73 C30 81 39 86 52 86 C65 86 76 81 82 75" }
         ]
       },
       {
@@ -2132,11 +2132,11 @@ function renderHiraganaPractice() {
             </filter>
           </defs>
           <g class="hiraganaGhostPaths" aria-hidden="true">
-            ${letter.strokes.map(stroke => `<path class="hiraganaGhostPath" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />`).join("")}
+            ${letter.strokes.map(stroke => `<path class="hiraganaGhostPath" data-stroke-id="${stroke.id}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />`).join("")}
           </g>
           <g id="hiraganaStrokeLayer">
             ${letter.strokes.map((stroke, index) => `
-              <path id="hiraganaStroke${index}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              <path id="hiraganaStroke${index}" data-guide-source="${index === currentHiraganaStroke ? "true" : "false"}" data-stroke-id="${stroke.id}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             `).join("")}
           </g>
           <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" fill="none" stroke-linecap="round" stroke-linejoin="round" />
@@ -2189,7 +2189,8 @@ function getCurrentHiraganaStroke() {
 }
 
 function getCurrentHiraganaPathElement() {
-  return document.getElementById(`hiraganaStroke${currentHiraganaStroke}`);
+  return document.querySelector(`#hiraganaStrokeLayer .hiraganaStroke[data-guide-source="true"]`)
+    || document.getElementById(`hiraganaStroke${currentHiraganaStroke}`);
 }
 
 function positionHiraganaPoints() {
@@ -2389,11 +2390,15 @@ function showHiraganaSparkle() {
 }
 
 function moveHiraganaGuideOnPath(path, guide, progress) {
+  if (!path || !guide) return;
+
   const length = path.getTotalLength();
   const clampedProgress = Math.max(0, Math.min(1, progress));
   const point = path.getPointAtLength(length * clampedProgress);
-  guide.setAttribute("cx", point.x);
-  guide.setAttribute("cy", point.y);
+  guide.setAttributeNS(null, "cx", String(point.x));
+  guide.setAttributeNS(null, "cy", String(point.y));
+  guide.dataset.pathProgress = clampedProgress.toFixed(3);
+  guide.dataset.sourceStroke = path.dataset.strokeId || "";
 }
 
 function startHiraganaGuide() {
@@ -2711,6 +2716,8 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
 
 
 
