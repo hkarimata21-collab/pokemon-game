@@ -3256,3 +3256,11 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   transition: none !important;
   will-change: auto;
 }
+
+/* SVG-path-only guide movement */
+.hiraganaGuidePoint,
+.hiraganaStartPoint,
+.hiraganaGoalPoint {
+  transition-property: none !important;
+  transform: none !important;
+}
