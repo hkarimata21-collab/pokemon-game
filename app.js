@@ -2086,6 +2086,7 @@ let currentHiraganaIndex = 0;
 let currentHiraganaStroke = 0;
 let hiraganaTraceActive = false;
 let hiraganaTracePoints = [];
+let hiraganaCompletedTraceLines = [];
 let hiraganaGuideFrame = 0;
 let hiraganaGuideStartedAt = 0;
 let hiraganaSparkleTimer = 0;
@@ -2098,6 +2099,7 @@ function startHiraganaPractice(index = 0) {
   placeholderPanel.classList.remove("hidden");
   currentHiraganaIndex = Math.max(0, Math.min(hiraganaLetters.length - 1, index));
   currentHiraganaStroke = 0;
+  hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
 
@@ -2139,7 +2141,10 @@ function renderHiraganaPractice() {
               <path id="hiraganaStroke${index}" data-guide-source="${index === currentHiraganaStroke ? "true" : "false"}" data-stroke-id="${stroke.id}" class="hiraganaStroke ${index < currentHiraganaStroke ? "isDone" : index === currentHiraganaStroke ? "isCurrent" : "isWaiting"}" d="${stroke.centerPath}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             `).join("")}
           </g>
-          <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+          <g id="hiraganaTraceLayer">
+            ${hiraganaCompletedTraceLines.map(points => `<polyline class="hiraganaTraceLine isDone" points="${points}" fill="none" stroke-linecap="round" stroke-linejoin="round" />`).join("")}
+            <polyline id="hiraganaTraceLine" class="hiraganaTraceLine" points="" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
           <circle id="hiraganaStartPoint" class="hiraganaStartPoint" r="3.9" />
           <circle id="hiraganaGoalPoint" class="hiraganaGoalPoint" r="3.7" />
           <circle id="hiraganaGuidePoint" class="hiraganaGuidePoint" r="3.5" />
@@ -2164,11 +2169,13 @@ function renderHiraganaPractice() {
 function selectHiraganaLetter(index) {
   currentHiraganaIndex = Math.max(0, Math.min(hiraganaLetters.length - 1, index));
   currentHiraganaStroke = 0;
+  hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
 
 function resetHiraganaLetter() {
   currentHiraganaStroke = 0;
+  hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
 
@@ -2284,6 +2291,10 @@ function updateHiraganaTraceLine() {
   line.setAttribute("points", hiraganaTracePoints.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" "));
 }
 
+function getHiraganaTracePointString(points) {
+  return points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+}
+
 function isHiraganaStrokeComplete(point) {
   const path = getCurrentHiraganaPathElement();
   if (!path) return false;
@@ -2299,6 +2310,10 @@ function completeHiraganaStroke() {
   if (!hiraganaTraceActive) return;
 
   hiraganaTraceActive = false;
+  const traceLine = getHiraganaTracePointString(hiraganaTracePoints);
+  if (traceLine) {
+    hiraganaCompletedTraceLines[currentHiraganaStroke] = traceLine;
+  }
   playSound("correct.mp3");
   showHiraganaSparkle();
   currentHiraganaStroke++;
@@ -2716,6 +2731,10 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
+
+
 
 
 
