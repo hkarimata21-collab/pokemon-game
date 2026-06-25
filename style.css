@@ -3284,3 +3284,25 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   pointer-events: none;
 }
 
+
+
+/* Full hiragana tabs */
+.hiraganaTabs {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: min(560px, 92vw);
+  margin-inline: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.hiraganaTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.hiraganaTabs .hiraganaTab {
+  flex: 0 0 auto;
+}
