@@ -2873,15 +2873,39 @@ function getHiraganaTracePointString(points) {
   return points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
 }
 
+function getTraceTravelDistance(points) {
+  return points.slice(1).reduce((total, point, index) => total + getPointDistance(points[index], point), 0);
+}
+
+function getTracePathFit(points, path) {
+  if (!points.length) {
+    return { averageDistance: Infinity, farRatio: 1 };
+  }
+
+  const sampledPoints = points.filter((_, index) => index % 2 === 0).slice(-26);
+  const distances = sampledPoints.map(point => getPathProgress(point, path, 72).distance);
+  const averageDistance = distances.reduce((total, distance) => total + distance, 0) / distances.length;
+  const farCount = distances.filter(distance => distance > 18).length;
+  return {
+    averageDistance,
+    farRatio: farCount / distances.length
+  };
+}
+
 function isHiraganaStrokeComplete(point) {
   const path = getCurrentHiraganaPathElement();
   if (!path) return false;
 
   const length = path.getTotalLength();
   const goal = path.getPointAtLength(length);
-  const progress = getPathProgress(point, path);
-  const enoughMovement = hiraganaTracePoints.length >= 5;
-  return enoughMovement && getPointDistance(point, goal) <= 24 && progress.ratio >= 0.5 && progress.distance <= 24;
+  const progress = getPathProgress(point, path, 86);
+  const traceDistance = getTraceTravelDistance(hiraganaTracePoints);
+  const fit = getTracePathFit(hiraganaTracePoints, path);
+  const enoughMovement = hiraganaTracePoints.length >= 9;
+  const reachedGoal = getPointDistance(point, goal) <= 13;
+  const tracedMostOfPath = progress.ratio >= 0.9 && traceDistance >= length * 0.65;
+  const stayedNearPath = progress.distance <= 14 && fit.averageDistance <= 13 && fit.farRatio <= 0.28;
+  return enoughMovement && reachedGoal && tracedMostOfPath && stayedNearPath;
 }
 
 function completeHiraganaStroke() {
@@ -3309,6 +3333,8 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
+
 
 
 
