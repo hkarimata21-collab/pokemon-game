@@ -3278,3 +3278,10 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   filter: none !important;
   animation: none !important;
 }
+
+
+.hiraganaShadowShape {
+  fill: rgba(45, 93, 97, 0.14);
+  stroke: none;
+  pointer-events: none;
+}
