@@ -3167,14 +3167,12 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   position: absolute;
   left: var(--x);
   top: 48%;
-  padding: 7px 10px;
-  border-radius: 999px;
-  color: #fff;
-  background: #ff9f1a;
-  font-weight: 900;
+  font-size: 34px;
+  line-height: 1;
   opacity: 0;
+  filter: drop-shadow(0 5px 5px rgba(108, 74, 0, 0.2));
   transform: translate(-50%, 20px) scale(0.7) rotate(-8deg);
-  animation: hiraganaSparklePop 820ms ease-out var(--delay) forwards;
+  animation: hiraganaSparklePop 980ms ease-out var(--delay) forwards;
 }
 
 .hiraganaClear {
@@ -3285,3 +3283,4 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   stroke: none;
   pointer-events: none;
 }
+
