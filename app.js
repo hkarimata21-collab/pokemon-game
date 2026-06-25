@@ -2951,7 +2951,7 @@ function completeHiraganaLetter() {
       </div>
     `;
     window.setTimeout(() => startHiraganaPokemonEncounter(letter), 760);
-  }, 620);
+  }, 1500);
 }
 
 function startHiraganaPokemonEncounter(letter) {
@@ -2998,8 +2998,8 @@ function showHiraganaSparkle() {
   if (!wrap) return;
 
   clearTimeout(hiraganaSparkleTimer);
-  wrap.innerHTML = ["きら", "ぴか", "できた"].map((text, index) => `
-    <span style="--x:${24 + index * 24}%;--delay:${index * 70}ms">${text}</span>
+  wrap.innerHTML = ["🌟", "✨", "⭐", "✨"].map((text, index) => `
+    <span style="--x:${22 + index * 18}%;--delay:${index * 80}ms">${text}</span>
   `).join("");
   hiraganaSparkleTimer = window.setTimeout(() => {
     if (wrap) wrap.innerHTML = "";
@@ -3333,6 +3333,7 @@ function showPokemon(no) {
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
 }
+
 
 
 
