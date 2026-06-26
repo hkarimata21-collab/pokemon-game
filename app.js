@@ -327,8 +327,8 @@ const areaData = {
     kicker: "🏠 さんすう広場",
     title: "さんすう広場",
     items: [
-      { label: "足し算", action: "startAdditionGame()" },
-      { label: "引き算", action: "showComingSoon('引き算')" }
+      { label: "たし算", action: "startAdditionGame()" },
+      { label: "ひき算", action: "startSubtractionGame()" }
     ]
   },
   word: {
@@ -815,29 +815,10 @@ function ensureLearningHud() {
 }
 
 function renderLearningHud() {
-  const hud = ensureLearningHud();
+  const hud = document.getElementById("learningRewardHud");
   if (!hud) return;
-  hud.classList.remove("hidden");
-
-  const nextReward = getNextLearningReward();
-  if (!nextReward) {
-    hud.innerHTML = `
-      <div class="learningHudIcon">🎁</div>
-      <div class="learningHudText">
-        <span>ごほうび</span>
-        <strong>ぜんぶ あつまったよ</strong>
-      </div>
-    `;
-    return;
-  }
-
-  hud.innerHTML = `
-    <div class="learningHudIcon">${getRewardIconHtml(nextReward.category, nextReward.id)}</div>
-    <div class="learningHudText">
-      <span>このもんだいのごほうび</span>
-      <strong>${getRewardLabel(nextReward.category, nextReward.id)}</strong>
-    </div>
-  `;
+  hud.classList.add("hidden");
+  hud.innerHTML = "";
 }
 
 function addOwnedReward(category, id, options = {}) {
@@ -4587,7 +4568,7 @@ function isHiraganaStrokeComplete(point) {
   const fit = getTracePathFit(hiraganaTracePoints, path);
   const enoughMovement = hiraganaTracePoints.length >= 9;
   const reachedGoal = getPointDistance(point, goal) <= 13;
-  const tracedMostOfPath = progress.ratio >= 0.9 && traceDistance >= length * 0.65;
+  const tracedMostOfPath = progress.ratio >= 0.95 && traceDistance >= length * 0.78;
   const stayedNearPath = progress.distance <= 14 && fit.averageDistance <= 13 && fit.farRatio <= 0.28;
   return enoughMovement && reachedGoal && tracedMostOfPath && stayedNearPath;
 }
@@ -4707,18 +4688,25 @@ function moveHiraganaGuideOnPath(path, guide, progress) {
   guide.dataset.sourceStroke = path.dataset.strokeId || "";
 }
 
+function getHiraganaGuideDuration(path) {
+  const length = path?.getTotalLength?.() || 0;
+  const duration = length * 52;
+  return Math.max(1800, Math.min(7600, duration));
+}
+
 function startHiraganaGuide() {
   stopHiraganaGuide();
   const guide = document.getElementById("hiraganaGuidePoint");
   const path = getCurrentHiraganaPathElement();
   if (!guide || !path) return;
 
+  const guideDuration = getHiraganaGuideDuration(path);
   hiraganaGuideStartedAt = performance.now();
   moveHiraganaGuideOnPath(path, guide, 0);
 
   const animate = (now) => {
-    const elapsed = (now - hiraganaGuideStartedAt) % 3600;
-    const progress = elapsed / 3600;
+    const elapsed = (now - hiraganaGuideStartedAt) % guideDuration;
+    const progress = elapsed / guideDuration;
     moveHiraganaGuideOnPath(path, guide, progress);
     hiraganaGuideFrame = requestAnimationFrame(animate);
   };
@@ -4732,8 +4720,8 @@ function stopHiraganaGuide() {
     hiraganaGuideFrame = 0;
   }
 }
-function startAdditionGame() {
-  currentLearningMode = "addition";
+function startMathGame(mode = "addition") {
+  currentLearningMode = mode;
   if (window.nextButton) {
     nextButton.textContent = "つぎのもんだい";
   }
@@ -4744,20 +4732,34 @@ function startAdditionGame() {
   loadPokemon();
 }
 
+function startAdditionGame() {
+  startMathGame("addition");
+}
+
+function startSubtractionGame() {
+  startMathGame("subtraction");
+}
+
 function getRandomPokemon() {
   return pokemonList[Math.floor(Math.random() * pokemonList.length)];
 }
 
 function createQuestion() {
+  const isSubtraction = currentLearningMode === "subtraction";
   if (!hintUsed) {
-    currentA = Math.floor(Math.random() * 10) + 1;
-    currentB = Math.floor(Math.random() * 10) + 1;
+    if (isSubtraction) {
+      currentA = Math.floor(Math.random() * 9) + 2;
+      currentB = Math.floor(Math.random() * currentA) + 1;
+    } else {
+      currentA = Math.floor(Math.random() * 10) + 1;
+      currentB = Math.floor(Math.random() * 10) + 1;
+    }
   }
 
   const a = currentA;
   const b = currentB;
-  currentAnswer = a + b;
-  question.textContent = `${a} + ${b} = ?`;
+  currentAnswer = isSubtraction ? a - b : a + b;
+  question.textContent = isSubtraction ? `${a} - ${b} = ?` : `${a} + ${b} = ?`;
 
   const maxCount = Math.max(a, b);
   const availableWidth = Math.min(window.innerWidth * 0.42, 260);
@@ -4765,8 +4767,8 @@ function createQuestion() {
   pokemonSize = Math.max(24, Math.min(60, pokemonSize));
   const img = getPokemonImage(currentPokemon.pokemonId);
 
-  function makeGroup(count) {
-    let html = '<div class="numberGroup">';
+  function makeGroup(count, extraClass = "") {
+    let html = `<div class="numberGroup ${extraClass}">`;
     for (let row = 0; row < Math.ceil(count / 5); row++) {
       html += '<div class="numberRow">';
       const start = row * 5;
@@ -4780,7 +4782,14 @@ function createQuestion() {
     return html;
   }
 
-  visualQuestion.innerHTML = hintUsed ? `${makeGroup(a)}<div class="plusSign">＋</div>${makeGroup(b)}` : "";
+  if (!hintUsed) {
+    visualQuestion.innerHTML = "";
+  } else if (isSubtraction) {
+    visualQuestion.innerHTML = `${makeGroup(a)}<div class="plusSign minusSign">－</div>${makeGroup(b, "isTaken")}`;
+  } else {
+    visualQuestion.innerHTML = `${makeGroup(a)}<div class="plusSign">＋</div>${makeGroup(b)}`;
+  }
+
   renderLearningHud();
 }
 
