@@ -3456,3 +3456,14 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   flex: 0 0 auto;
 }
 
+
+
+.numberGroup.isTaken {
+  opacity: 0.34;
+  filter: grayscale(0.55);
+  transform: scale(0.92);
+}
+
+.minusSign {
+  color: #e95b5b;
+}
