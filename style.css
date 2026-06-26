@@ -3286,27 +3286,6 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 
 
 
-/* Full hiragana tabs */
-.hiraganaLetterTabs {
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: min(560px, 92vw);
-  margin-inline: auto;
-  padding-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.hiraganaLetterTabs::-webkit-scrollbar {
-  display: none;
-}
-
-.hiraganaLetterTabs .hiraganaTab {
-  flex: 0 0 auto;
-}
-
 /* Hiragana landscape layout */
 @media (orientation: landscape) and (max-height: 620px) {
   .hiraganaPanel {
@@ -3461,3 +3440,19 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
     font-size: 15px;
   }
 }
+
+
+/* Kana letter tabs: wrap buttons like the original UI instead of a horizontal scrollbar. */
+.hiraganaLetterTabs {
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  max-width: 100% !important;
+  margin-inline: auto;
+  padding-bottom: 0;
+}
+
+.hiraganaLetterTabs .hiraganaTab {
+  flex: 0 0 auto;
+}
+
