@@ -3467,3 +3467,77 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 .minusSign {
   color: #e95b5b;
 }
+
+
+/* Pretend-play item reactions */
+.itemSticker.isBeingEaten {
+  pointer-events: none;
+  animation: snackDisappear 2200ms ease-in forwards;
+  transform-origin: center;
+}
+
+.pokemonSticker.isThrowing img {
+  animation: pokemonThrowToy 760ms cubic-bezier(0.18, 0.9, 0.28, 1.1);
+}
+
+.pokemonSticker.isKicking img {
+  animation: pokemonKickToy 760ms cubic-bezier(0.18, 0.9, 0.28, 1.1);
+}
+
+.itemSticker.isThrownToy {
+  animation: toyThrownArc 900ms ease-out;
+}
+
+.itemSticker.isKickedToy {
+  animation: toyKickedRoll 900ms ease-out;
+}
+
+.itemSticker[data-item-id="baseball"],
+.itemSticker[data-item-id="soccerball"],
+.itemSticker[data-item-id="ball"] {
+  filter: drop-shadow(0 7px 8px rgba(52, 89, 97, 0.16));
+}
+
+@keyframes snackDisappear {
+  0% {
+    opacity: 1;
+    transform: var(--rest-transform) scale(1);
+    filter: drop-shadow(0 7px 8px rgba(52, 89, 97, 0.14));
+  }
+  38% {
+    opacity: 0.9;
+    transform: var(--rest-transform) scale(0.78) rotate(5deg);
+  }
+  72% {
+    opacity: 0.48;
+    transform: var(--rest-transform) scale(0.46) rotate(-8deg);
+  }
+  100% {
+    opacity: 0;
+    transform: var(--rest-transform) scale(0.12) rotate(10deg);
+  }
+}
+
+@keyframes pokemonThrowToy {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-8px) rotate(-10deg); }
+  58% { transform: translateY(-2px) rotate(12deg); }
+}
+
+@keyframes pokemonKickToy {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  34% { transform: translateX(8px) rotate(8deg) scale(1.05); }
+  62% { transform: translateX(-3px) rotate(-5deg); }
+}
+
+@keyframes toyThrownArc {
+  0% { transform: var(--rest-transform); }
+  42% { transform: var(--rest-transform) translate(34px, -38px) rotate(120deg) scale(1.08); }
+  100% { transform: var(--rest-transform) translate(76px, 8px) rotate(260deg) scale(0.96); }
+}
+
+@keyframes toyKickedRoll {
+  0% { transform: var(--rest-transform); }
+  36% { transform: var(--rest-transform) translate(42px, -10px) rotate(170deg) scale(1.04); }
+  100% { transform: var(--rest-transform) translate(92px, 4px) rotate(420deg) scale(0.96); }
+}

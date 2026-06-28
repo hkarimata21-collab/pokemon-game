@@ -1520,6 +1520,14 @@ function feedPokemonWithItem(pokemonSticker, foodItem) {
   showPretendSparkle(foodItem, "🍽️");
   showPretendSparkle(pokemonSticker, "❤️");
 
+  [520, 1180, 1840].forEach((delay, index) => {
+    window.setTimeout(() => {
+      if (!foodItem.isConnected) return;
+      foodItem.dataset.biteStep = String(index + 1);
+      showPretendSparkle(foodItem, index === 2 ? "✨" : "😋");
+    }, delay);
+  });
+
   window.setTimeout(() => {
     if (!foodItem.isConnected) return;
     foodItem.remove();
@@ -1527,9 +1535,86 @@ function feedPokemonWithItem(pokemonSticker, foodItem) {
     showPretendSparkle(pokemonSticker, "✨");
     playCry(Number(pokemonSticker.dataset.pokemonId || 0));
     saveStickerScene();
-  }, 2200);
+  }, 2500);
 
   return true;
+}
+
+function setStickerPercentPosition(sticker, x, y) {
+  const safeX = Math.max(4, Math.min(94, x));
+  const safeY = Math.max(8, Math.min(92, y));
+  sticker.style.left = `${safeX}%`;
+  sticker.style.top = `${safeY}%`;
+  updateStickerTransform(sticker);
+}
+
+function findPokemonNearToyLanding(toyItem, sourcePokemon, radius = 150) {
+  const landingCenter = getStickerCenter(toyItem);
+  let nearestPokemon = null;
+  let nearestDistance = Infinity;
+
+  stickerBoard.querySelectorAll(".pokemonSticker").forEach(pokemonSticker => {
+    if (pokemonSticker === sourcePokemon) return;
+    const distance = getDistance(landingCenter, getStickerCenter(pokemonSticker));
+    if (distance < nearestDistance) {
+      nearestPokemon = pokemonSticker;
+      nearestDistance = distance;
+    }
+  });
+
+  return nearestPokemon && nearestDistance <= radius ? nearestPokemon : null;
+}
+
+function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const start = getStickerPercentPosition(toyItem);
+  const direction = options.direction || Number(sourcePokemon.dataset.facing || 1) || 1;
+  const flightPercent = action.itemClass === "isKickedToy" ? 19 : 16;
+  const liftPx = action.itemClass === "isKickedToy" ? -28 : -54;
+  const endX = Math.max(5, Math.min(92, start.x + direction * flightPercent));
+  const endY = Math.max(9, Math.min(90, start.y + (options.returned ? -2 : 2)));
+  const dx = (endX - start.x) / 100 * boardRect.width;
+  const dy = (endY - start.y) / 100 * boardRect.height;
+  const baseTransform = toyItem.style.getPropertyValue("--rest-transform") || toyItem.style.transform || "translateY(0)";
+  const spin = action.itemClass === "isKickedToy" ? 480 : 320;
+
+  toyItem.classList.add("isFlyingToy");
+  const animation = toyItem.animate([
+    { transform: baseTransform, offset: 0, easing: "ease-out" },
+    { transform: `${baseTransform} translate(${dx * 0.52}px, ${dy * 0.52 + liftPx}px) rotate(${spin * 0.45 * direction}deg) scale(1.08)`, offset: 0.52, easing: "ease-in-out" },
+    { transform: `${baseTransform} translate(${dx}px, ${dy}px) rotate(${spin * direction}deg) scale(0.98)`, offset: 1 }
+  ], {
+    duration: options.returned ? 820 : 980,
+    easing: "cubic-bezier(0.16, 0.78, 0.24, 1)",
+    fill: "forwards"
+  });
+
+  animation.onfinish = () => {
+    animation.cancel();
+    setStickerPercentPosition(toyItem, endX, endY);
+    showPretendSparkle(toyItem, action.bubble);
+
+    const receiver = findPokemonNearToyLanding(toyItem, sourcePokemon);
+    if (receiver && !options.returned) {
+      applyPokemonReaction(receiver, "playing", { quiet: true });
+      receiver.dataset.bubble = "↩️";
+      receiver.classList.add(action.pokemonClass);
+      showPretendSparkle(receiver, action.bubble);
+      pausePokemonAutonomy(receiver, 4800);
+      window.setTimeout(() => playCry(Number(receiver.dataset.pokemonId || 0)), 260);
+      sourcePokemon.classList.remove(action.pokemonClass);
+      window.setTimeout(() => {
+        receiver.classList.remove(action.pokemonClass);
+        animateToyArc(toyItem, receiver, action, { returned: true, direction: -direction });
+      }, 520);
+      return;
+    }
+
+    toyItem.classList.remove("isFlyingToy", action.itemClass);
+    toyItem.dataset.isToyActing = "";
+    sourcePokemon.classList.remove(action.pokemonClass);
+    saveStickerScene();
+  };
 }
 
 function playToyActionWithPokemon(pokemonSticker, toyItem) {
@@ -1546,13 +1631,7 @@ function playToyActionWithPokemon(pokemonSticker, toyItem) {
   pausePokemonAutonomy(pokemonSticker, 5600);
 
   window.setTimeout(() => playCry(Number(pokemonSticker.dataset.pokemonId || 0)), 640);
-  window.setTimeout(() => {
-    pokemonSticker.classList.remove(action.pokemonClass);
-    toyItem.classList.remove(action.itemClass);
-    toyItem.dataset.isToyActing = "";
-    updateStickerTransform(toyItem);
-    saveStickerScene();
-  }, 980);
+  animateToyArc(toyItem, pokemonSticker, action);
 
   return true;
 }
