@@ -134,10 +134,10 @@ const pokemonList = [
 { dexNo: 117, pokemonId: 939, name: "ハラバリー" },
 { dexNo: 118, pokemonId: 953, name: "シガロコ" },
 { dexNo: 119, pokemonId: 954, name: "ベラカス" },
-{ dexNo: 120, pokemonId: 959, name: "オトシドリ" },
+{ dexNo: 120, pokemonId: 962, name: "オトシドリ" },
 
-{ dexNo: 121, pokemonId: 965, name: "ブロロローム" },
-{ dexNo: 122, pokemonId: 966, name: "モトトカゲ" },
+{ dexNo: 121, pokemonId: 966, name: "ブロロローム" },
+{ dexNo: 122, pokemonId: 967, name: "モトトカゲ" },
 { dexNo: 123, pokemonId: 968, name: "ミミズズ" },
 { dexNo: 124, pokemonId: 970, name: "キラフロル" },
 { dexNo: 125, pokemonId: 971, name: "ボチ" },
@@ -177,16 +177,16 @@ const pokemonList = [
 { dexNo: 156, pokemonId: 1004, name: "イーユイ" },
 { dexNo: 157, pokemonId: 1009, name: "ウネルミナモ" },
 { dexNo: 158, pokemonId: 1010, name: "テツノイサハ" },
-{ dexNo: 159, pokemonId: 1014, name: "オーガポン" },
-{ dexNo: 160, pokemonId: 1015, name: "イイネイヌ" },
+{ dexNo: 159, pokemonId: 1017, name: "オーガポン" },
+{ dexNo: 160, pokemonId: 1014, name: "イイネイヌ" },
 
-{ dexNo: 161, pokemonId: 1016, name: "マシマシラ" },
-{ dexNo: 162, pokemonId: 1017, name: "キチキギス" },
-{ dexNo: 163, pokemonId: 1018, name: "モモワロウ" },
-{ dexNo: 164, pokemonId: 1044, name: "ウガツホムラ" },
-{ dexNo: 165, pokemonId: 1045, name: "タケルライコ" },
-{ dexNo: 166, pokemonId: 1046, name: "テツノイワオ" },
-{ dexNo: 167, pokemonId: 1047, name: "テツノカシラ" },
+{ dexNo: 161, pokemonId: 1015, name: "マシマシラ" },
+{ dexNo: 162, pokemonId: 1016, name: "キチキギス" },
+{ dexNo: 163, pokemonId: 1025, name: "モモワロウ" },
+{ dexNo: 164, pokemonId: 1020, name: "ウガツホムラ" },
+{ dexNo: 165, pokemonId: 1021, name: "タケルライコ" },
+{ dexNo: 166, pokemonId: 1022, name: "テツノイワオ" },
+{ dexNo: 167, pokemonId: 1023, name: "テツノカシラ" },
 
 { dexNo: 168, pokemonId: 58, name: "ガーディ" },
 { dexNo: 169, pokemonId: 63, name: "ケーシィ" },
@@ -366,8 +366,25 @@ window.addEventListener("load", () => {
   goHome();
 });
 
-function getPokemonImage(id) {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+function getPokemonImage(id, variant = "sprite") {
+  const numericId = Number(id);
+  if (!Number.isFinite(numericId) || numericId <= 0) return "ball.png";
+
+  if (variant === "artwork") {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${numericId}.png`;
+  }
+
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${numericId}.png`;
+}
+
+function handlePokemonImageError(image, id) {
+  if (!image || image.dataset.fallbackTried === "true") return;
+  image.dataset.fallbackTried = "true";
+  image.src = getPokemonImage(id, "artwork");
+}
+
+function pokemonImageAttrs(id, alt = "") {
+  return `src="${getPokemonImage(id)}" onerror="handlePokemonImageError(this, ${Number(id) || 0})" alt="${alt}"`;
 }
 
 function playCry(id) {
@@ -668,6 +685,8 @@ const rewards = {
     { id: "flower", icon: "🌸", label: "花", category: "decoration" },
     { id: "rock", icon: "🪨", label: "岩", category: "decoration" },
     { id: "ball", icon: "🔴", label: "モンスターボール", category: "decoration" },
+    { id: "baseball", icon: "⚾️", label: "やきゅうボール", category: "decoration" },
+    { id: "soccerball", icon: "⚽️", label: "サッカーボール", category: "decoration" },
     { id: "ribbon", icon: "🎀", label: "リボン", category: "decoration" },
     { id: "sign", icon: "🪧", label: "看板", category: "decoration" }
   ],
@@ -693,7 +712,7 @@ const starterRewards = {
   pokemon: [],
   furniture: ["chair"],
   food: ["apple"],
-  decoration: ["ball"],
+  decoration: ["ball", "baseball", "soccerball"],
   background: ["forest"],
   building: []
 };
@@ -778,7 +797,7 @@ function getRewardIconHtml(category, id) {
 
   if (category === "pokemon") {
     const pokemon = pokemonList.find(p => normalizeRewardId(p.dexNo) === normalizeRewardId(id));
-    return pokemon ? `<img src="${getPokemonImage(pokemon.pokemonId)}" alt="">` : "⚡";
+    return pokemon ? `<img ${pokemonImageAttrs(pokemon.pokemonId)}>` : "⚡";
   }
 
   return reward?.icon || "🎁";
@@ -1002,7 +1021,7 @@ function getShelfItems(category) {
         category: "pokemon",
         id: String(p.dexNo),
         label: p.name,
-        html: `<img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}">`
+        html: `<img ${pokemonImageAttrs(p.pokemonId, p.name)}>`
       }));
   }
 
@@ -1278,7 +1297,7 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
     sticker.dataset.reaction = savedState?.reaction || "";
     sticker.dataset.pokeState = savedState?.pokeState || savedState?.reaction || "normal";
     sticker.dataset.facing = savedState?.facing || "1";
-    sticker.innerHTML = `<img src="${stickerData.content}" alt="${stickerData.label || "ポケモン"}">`;
+    sticker.innerHTML = `<img src="${stickerData.content}" onerror="handlePokemonImageError(this, ${Number(stickerData.pokemonId) || 0})" alt="${stickerData.label || "ポケモン"}">`;
   } else {
     sticker.dataset.itemId = stickerData.itemId || stickerData.content;
     sticker.dataset.category = stickerData.category || "";
@@ -1344,7 +1363,7 @@ function updateStickerTransform(sticker) {
 }
 
 function clearPokemonReaction(sticker) {
-  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isWalking", "isHungry", "isSleepy", "isLooking");
+  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isWalking", "isHungry", "isSleepy", "isLooking", "isThrowing", "isKicking");
   sticker.dataset.reaction = "";
   sticker.dataset.pokeState = "normal";
   sticker.dataset.bubble = "";
@@ -1366,7 +1385,7 @@ function applyPokemonReaction(sticker, reaction, options = {}) {
     play: "playing"
   }[reaction] || reaction;
 
-  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isHungry", "isSleepy");
+  sticker.classList.remove("isSleeping", "isSitting", "isEating", "isHappy", "isHealing", "isLearning", "isPlaying", "isHungry", "isSleepy", "isThrowing", "isKicking");
   const reactionClass = {
     sleeping: "isSleeping",
     sit: "isSitting",
@@ -1411,7 +1430,7 @@ function applyPokemonReaction(sticker, reaction, options = {}) {
     hungry: "🍔",
     sleepy: "💤",
     sleeping: "Zzz",
-    sit: "すわった",
+    sit: "🪑✨",
     eating: "❤️",
     happy: "❤️",
     playing: "🎾",
@@ -1454,14 +1473,111 @@ function getItemReaction(item) {
   if (itemId === "bed" || itemId === "sofa") return "sleeping";
   if (itemId === "chair" || itemId === "table") return "sit";
   if (category === "food" || itemId === "restaurant") return "eating";
-  if (itemId === "ball" || itemId === "tree" || itemId === "flower") return "playing";
+  if (["ball", "baseball", "soccerball", "tree", "flower"].includes(itemId)) return "playing";
   if (itemId === "center") return "heal";
   if (itemId === "school" || itemId === "bookshelf") return "learn";
   return "";
 }
 
+function getToyAction(item) {
+  const itemId = item?.dataset.itemId || "";
+  return {
+    baseball: { pokemonClass: "isThrowing", itemClass: "isThrownToy", bubble: "⚾️", sparkle: "✨" },
+    ball: { pokemonClass: "isThrowing", itemClass: "isThrownToy", bubble: "🔴", sparkle: "✨" },
+    soccerball: { pokemonClass: "isKicking", itemClass: "isKickedToy", bubble: "⚽️", sparkle: "💫" }
+  }[itemId] || null;
+}
+
+function findNearestPokemonForItem(itemSticker) {
+  if (!itemSticker || itemSticker.dataset.type !== "item") return null;
+
+  const itemCenter = getStickerCenter(itemSticker);
+  let nearestPokemon = null;
+  let nearestDistance = Infinity;
+
+  stickerBoard.querySelectorAll(".pokemonSticker").forEach(pokemonSticker => {
+    const distance = getDistance(itemCenter, getStickerCenter(pokemonSticker));
+    if (distance < nearestDistance) {
+      nearestPokemon = pokemonSticker;
+      nearestDistance = distance;
+    }
+  });
+
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const snapDistance = Math.max(88, Math.min(boardRect.width, boardRect.height) * 0.16);
+  return nearestPokemon && nearestDistance <= snapDistance ? nearestPokemon : null;
+}
+
+function feedPokemonWithItem(pokemonSticker, foodItem) {
+  if (!pokemonSticker || !foodItem || foodItem.dataset.isBeingEaten === "true") return false;
+  if (foodItem.dataset.category !== "food") return false;
+
+  foodItem.dataset.isBeingEaten = "true";
+  foodItem.classList.add("isBeingEaten");
+  foodItem.style.pointerEvents = "none";
+  applyPokemonReaction(pokemonSticker, "eating", { quiet: true });
+  pokemonSticker.dataset.bubble = "😋";
+  showPretendSparkle(foodItem, "🍽️");
+  showPretendSparkle(pokemonSticker, "❤️");
+
+  window.setTimeout(() => {
+    if (!foodItem.isConnected) return;
+    foodItem.remove();
+    pokemonSticker.dataset.bubble = "❤️";
+    showPretendSparkle(pokemonSticker, "✨");
+    playCry(Number(pokemonSticker.dataset.pokemonId || 0));
+    saveStickerScene();
+  }, 2200);
+
+  return true;
+}
+
+function playToyActionWithPokemon(pokemonSticker, toyItem) {
+  const action = getToyAction(toyItem);
+  if (!pokemonSticker || !toyItem || !action || toyItem.dataset.isToyActing === "true") return false;
+
+  toyItem.dataset.isToyActing = "true";
+  applyPokemonReaction(pokemonSticker, "playing", { quiet: true });
+  pokemonSticker.dataset.bubble = action.bubble;
+  pokemonSticker.classList.add(action.pokemonClass);
+  toyItem.classList.add(action.itemClass);
+  showPretendSparkle(pokemonSticker, action.sparkle);
+  showPretendSparkle(toyItem, action.bubble);
+  pausePokemonAutonomy(pokemonSticker, 5600);
+
+  window.setTimeout(() => playCry(Number(pokemonSticker.dataset.pokemonId || 0)), 640);
+  window.setTimeout(() => {
+    pokemonSticker.classList.remove(action.pokemonClass);
+    toyItem.classList.remove(action.itemClass);
+    toyItem.dataset.isToyActing = "";
+    updateStickerTransform(toyItem);
+    saveStickerScene();
+  }, 980);
+
+  return true;
+}
+
+function applyPretendInteraction(pokemonSticker, item, reaction) {
+  if (feedPokemonWithItem(pokemonSticker, item)) return true;
+  if (playToyActionWithPokemon(pokemonSticker, item)) return true;
+
+  const state = pokemonSticker.dataset.pokeState || "normal";
+  const matchesNeed = (state === "hungry" && reaction === "eating")
+    || (state === "sleepy" && reaction === "sleeping")
+    || (state === "playing" && reaction === "playing")
+    || state === "normal"
+    || state === "happy";
+
+  if (!matchesNeed) return false;
+
+  applyPokemonReaction(pokemonSticker, reaction, { keep: reaction === "sleeping" });
+  const sparkleMark = reaction === "sleeping" ? "💤" : reaction === "eating" ? "❤️" : reaction === "playing" ? "✨" : reaction === "sit" ? "🪑" : "⭐";
+  showPretendSparkle(pokemonSticker, sparkleMark);
+  return true;
+}
+
 function reactToNearbyToy(pokemonSticker) {
-  if (!pokemonSticker || pokemonSticker.dataset.type !== "pokemon") return;
+  if (!pokemonSticker || pokemonSticker.dataset.type !== "pokemon") return false;
 
   const pokemonCenter = getStickerCenter(pokemonSticker);
   let nearest = null;
@@ -1481,20 +1597,22 @@ function reactToNearbyToy(pokemonSticker) {
   const boardRect = stickerBoard.getBoundingClientRect();
   const snapDistance = Math.max(82, Math.min(boardRect.width, boardRect.height) * 0.15);
   if (nearest && nearestDistance <= snapDistance) {
-    const state = pokemonSticker.dataset.pokeState || "normal";
-    const reaction = nearest.reaction;
-    const matchesNeed = (state === "hungry" && reaction === "eating")
-      || (state === "sleepy" && reaction === "sleeping")
-      || (state === "playing" && reaction === "playing")
-      || state === "normal"
-      || state === "happy";
-
-    if (matchesNeed) {
-      applyPokemonReaction(pokemonSticker, reaction, { keep: reaction === "sleeping" });
-      const sparkleMark = reaction === "sleeping" ? "💤" : reaction === "eating" ? "❤️" : reaction === "playing" ? "✨" : "⭐";
-      showPretendSparkle(pokemonSticker, sparkleMark);
-    }
+    return applyPretendInteraction(pokemonSticker, nearest.item, nearest.reaction);
   }
+
+  return false;
+}
+
+function reactItemWithNearbyPokemon(itemSticker) {
+  if (!itemSticker || itemSticker.dataset.type !== "item") return false;
+
+  const reaction = getItemReaction(itemSticker);
+  if (!reaction) return false;
+
+  const pokemonSticker = findNearestPokemonForItem(itemSticker);
+  if (!pokemonSticker) return false;
+
+  return applyPretendInteraction(pokemonSticker, itemSticker, reaction);
 }
 
 function playStickerBounce(sticker) {
@@ -1998,10 +2116,14 @@ function finishStickerPointer(event) {
   lastPretendInteractionAt = Date.now();
 
   if (stickerDragMoved) {
-    reactToNearbyToy(sticker);
+    if (sticker.dataset.type === "pokemon") {
+      reactToNearbyToy(sticker);
+    } else {
+      reactItemWithNearbyPokemon(sticker);
+    }
     playStickerBounce(sticker);
     saveStickerScene();
-  } else {
+  } else if (sticker.dataset.type === "pokemon") {
     playPokemonTap(sticker);
   }
 
@@ -4642,6 +4764,8 @@ function startHiraganaPokemonEncounter(letter) {
   const toolReward = awardRandomLearningToolReward();
   const toolRewardText = toolReward ? ` ${getRewardLabel(toolReward.category, toolReward.id)}も ゲット！` : "";
   pokemonName.textContent = currentPokemon.name;
+  pokemonImage.dataset.fallbackTried = "false";
+  pokemonImage.onerror = () => handlePokemonImageError(pokemonImage, currentPokemon.pokemonId);
   pokemonImage.src = getPokemonImage(currentPokemon.pokemonId);
   questionArea.classList.add("hidden");
   catchArea.classList.remove("hidden");
@@ -4774,7 +4898,7 @@ function createQuestion() {
       const start = row * 5;
       const end = Math.min(start + 5, count);
       for (let i = start; i < end; i++) {
-        html += `<img src="${img}" alt="" style="width:${pokemonSize}px;height:${pokemonSize}px;">`;
+        html += `<img src="${img}" onerror="handlePokemonImageError(this, ${currentPokemon.pokemonId})" alt="" style="width:${pokemonSize}px;height:${pokemonSize}px;">`;
       }
       html += "</div>";
     }
@@ -4826,6 +4950,8 @@ function loadPokemon() {
 
   currentPokemon = getRandomPokemon();
   pokemonName.textContent = currentPokemon.name;
+  pokemonImage.dataset.fallbackTried = "false";
+  pokemonImage.onerror = () => handlePokemonImageError(pokemonImage, currentPokemon.pokemonId);
   pokemonImage.src = getPokemonImage(currentPokemon.pokemonId);
   setTimeout(() => playCry(currentPokemon.pokemonId), 300);
 
@@ -4990,7 +5116,7 @@ function renderHomeDex() {
   for (let i = 0; i < 8; i++) {
     const p = ownedPokemon[i];
     slots.push(p
-      ? `<button class="homeDexSlot" onclick="openArea('dex'); showPokemon(${p.dexNo})"><img src="${getPokemonImage(p.pokemonId)}" alt="${p.name}"></button>`
+      ? `<button class="homeDexSlot" onclick="openArea('dex'); showPokemon(${p.dexNo})"><img ${pokemonImageAttrs(p.pokemonId, p.name)}></button>`
       : `<div class="homeDexSlot">?</div>`
     );
   }
@@ -5026,7 +5152,7 @@ function showPokemon(no) {
   dexContent.innerHTML = `
     <button onclick="renderDex()">← もどる</button>
     <h3>${p.dexNo}. ${p.name}</h3>
-    <img src="${getPokemonImage(p.pokemonId)}" width="180" alt="${p.name}">
+    <img ${pokemonImageAttrs(p.pokemonId, p.name)} width="180">
     <br><br>
     <button onclick="playCry(${p.pokemonId})">🔊 なきごえ</button>
   `;
