@@ -1191,7 +1191,6 @@ function placeShelfDragItem(event) {
 
   shelfDragCandidate = null;
   shelfDragJustPlaced = true;
-  closeStickerShelf();
 }
 
 function chooseStickerShelfItem(kind, category, id) {
@@ -1207,8 +1206,6 @@ function chooseStickerShelfItem(kind, category, id) {
   } else {
     addItemSticker(category, id);
   }
-
-  closeStickerShelf();
 }
 
 function renderBackgroundChoices() {
