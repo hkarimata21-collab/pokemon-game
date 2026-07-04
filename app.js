@@ -695,7 +695,8 @@ const rewards = {
     { id: "sea", icon: "🏖️", label: "海", category: "background" },
     { id: "park", icon: "🌳", label: "公園", category: "background" },
     { id: "town", icon: "🏙️", label: "街", category: "background" },
-    { id: "home", icon: "🏠", label: "おうち", category: "background" }
+    { id: "home", icon: "🏠", label: "おうち", category: "background" },
+    { id: "lightart", icon: "🌈", label: "ひかりアート", category: "background" }
   ],
   building: [
     { id: "house", icon: "🏠", label: "おうち", category: "building" },
@@ -713,7 +714,7 @@ const starterRewards = {
   furniture: ["chair"],
   food: ["apple"],
   decoration: ["ball", "baseball", "soccerball"],
-  background: ["forest"],
+  background: ["forest", "lightart"],
   building: []
 };
 
@@ -1240,7 +1241,8 @@ function setStickerBackground(name, options = {}) {
     "boardSea",
     "boardPark",
     "boardTown",
-    "boardHome"
+    "boardHome",
+    "boardLightart"
   );
   stickerBoard.classList.add(`board${name.charAt(0).toUpperCase()}${name.slice(1)}`);
 
@@ -1504,7 +1506,7 @@ function findNearestPokemonForItem(itemSticker) {
   });
 
   const boardRect = stickerBoard.getBoundingClientRect();
-  const snapDistance = Math.max(88, Math.min(boardRect.width, boardRect.height) * 0.16);
+  const snapDistance = Math.max(72, Math.min(boardRect.width, boardRect.height) * 0.125);
   return nearestPokemon && nearestDistance <= snapDistance ? nearestPokemon : null;
 }
 
@@ -1519,6 +1521,7 @@ function feedPokemonWithItem(pokemonSticker, foodItem) {
   pokemonSticker.dataset.bubble = "😋";
   showPretendSparkle(foodItem, "🍽️");
   showPretendSparkle(pokemonSticker, "❤️");
+  showLightArtEffectAtSticker(pokemonSticker, "food");
 
   [520, 1180, 1840].forEach((delay, index) => {
     window.setTimeout(() => {
@@ -1569,7 +1572,7 @@ function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
   const boardRect = stickerBoard.getBoundingClientRect();
   const start = getStickerPercentPosition(toyItem);
   const direction = options.direction || Number(sourcePokemon.dataset.facing || 1) || 1;
-  const flightPercent = action.itemClass === "isKickedToy" ? 19 : 16;
+  const flightPercent = 40;
   const liftPx = action.itemClass === "isKickedToy" ? -28 : -54;
   const endX = Math.max(5, Math.min(92, start.x + direction * flightPercent));
   const endY = Math.max(9, Math.min(90, start.y + (options.returned ? -2 : 2)));
@@ -1578,13 +1581,16 @@ function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
   const baseTransform = toyItem.style.getPropertyValue("--rest-transform") || toyItem.style.transform || "translateY(0)";
   const spin = action.itemClass === "isKickedToy" ? 480 : 320;
 
+  const startCenter = getStickerCenter(toyItem);
+  const endCenter = { x: startCenter.x + dx, y: startCenter.y + dy };
+  showLightArtTrail(startCenter, endCenter);
   toyItem.classList.add("isFlyingToy");
   const animation = toyItem.animate([
     { transform: baseTransform, offset: 0, easing: "ease-out" },
-    { transform: `${baseTransform} translate(${dx * 0.52}px, ${dy * 0.52 + liftPx}px) rotate(${spin * 0.45 * direction}deg) scale(1.08)`, offset: 0.52, easing: "ease-in-out" },
-    { transform: `${baseTransform} translate(${dx}px, ${dy}px) rotate(${spin * direction}deg) scale(0.98)`, offset: 1 }
+    { transform: `${baseTransform} translate(${dx * 0.52}px, ${dy * 0.52 + liftPx}px) rotate(${spin * 0.45 * direction}deg)`, offset: 0.52, easing: "ease-in-out" },
+    { transform: `${baseTransform} translate(${dx}px, ${dy}px) rotate(${spin * direction}deg)`, offset: 1 }
   ], {
-    duration: options.returned ? 820 : 980,
+    duration: options.returned ? 820 : 1160,
     easing: "cubic-bezier(0.16, 0.78, 0.24, 1)",
     fill: "forwards"
   });
@@ -1631,8 +1637,82 @@ function playToyActionWithPokemon(pokemonSticker, toyItem) {
   pausePokemonAutonomy(pokemonSticker, 5600);
 
   window.setTimeout(() => playCry(Number(pokemonSticker.dataset.pokemonId || 0)), 640);
-  animateToyArc(toyItem, pokemonSticker, action);
+  window.setTimeout(() => animateToyArc(toyItem, pokemonSticker, action), 1500);
 
+  return true;
+}
+
+function findNearbyItemForAutonomy(pokemonSticker, matcher, minPixels, percentScale) {
+  if (!pokemonSticker || pokemonSticker.dataset.type !== "pokemon") return null;
+
+  const pokemonCenter = getStickerCenter(pokemonSticker);
+  let nearestItem = null;
+  let nearestDistance = Infinity;
+
+  stickerBoard.querySelectorAll(".itemSticker").forEach(item => {
+    if (!matcher(item)) return;
+
+    const distance = getDistance(pokemonCenter, getStickerCenter(item));
+    if (distance < nearestDistance) {
+      nearestItem = item;
+      nearestDistance = distance;
+    }
+  });
+
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const playDistance = Math.max(minPixels, Math.min(boardRect.width, boardRect.height) * percentScale);
+  return nearestItem && nearestDistance <= playDistance ? nearestItem : null;
+}
+
+function findNearbyFoodForAutonomy(pokemonSticker) {
+  return findNearbyItemForAutonomy(
+    pokemonSticker,
+    item => item.dataset.category === "food" && item.dataset.isBeingEaten !== "true",
+    82,
+    0.135
+  );
+}
+
+function findNearbyToyForAutonomy(pokemonSticker) {
+  return findNearbyItemForAutonomy(
+    pokemonSticker,
+    item => getToyAction(item) && item.dataset.isToyActing !== "true",
+    86,
+    0.14
+  );
+}
+
+function facePokemonTowardItem(pokemonSticker, item) {
+  pokemonSticker.dataset.facing = getStickerCenter(item).x >= getStickerCenter(pokemonSticker).x ? "1" : "-1";
+  pokemonSticker.dataset.lookTilt = "0";
+  updateStickerTransform(pokemonSticker);
+}
+
+function tryAutonomousToyPlay(pokemonSticker) {
+  if (!pokemonSticker || pokemonSticker.dataset.type !== "pokemon") return false;
+  if (pokemonSticker === activeSticker || pokemonSticker.classList.contains("isDragging")) return false;
+  if (Date.now() - lastPretendInteractionAt < 2500) return false;
+
+  const food = findNearbyFoodForAutonomy(pokemonSticker);
+  if (food) {
+    facePokemonTowardItem(pokemonSticker, food);
+    showPretendSparkle(pokemonSticker, "🍽️");
+    window.setTimeout(() => {
+      if (!pokemonSticker.isConnected || !food.isConnected) return;
+      feedPokemonWithItem(pokemonSticker, food);
+    }, 420);
+    return true;
+  }
+
+  const toy = findNearbyToyForAutonomy(pokemonSticker);
+  if (!toy) return false;
+
+  facePokemonTowardItem(pokemonSticker, toy);
+  showPretendSparkle(pokemonSticker, "❗");
+  window.setTimeout(() => {
+    if (!pokemonSticker.isConnected || !toy.isConnected) return;
+    playToyActionWithPokemon(pokemonSticker, toy);
+  }, 420);
   return true;
 }
 
@@ -1674,7 +1754,7 @@ function reactToNearbyToy(pokemonSticker) {
   });
 
   const boardRect = stickerBoard.getBoundingClientRect();
-  const snapDistance = Math.max(82, Math.min(boardRect.width, boardRect.height) * 0.15);
+  const snapDistance = Math.max(70, Math.min(boardRect.width, boardRect.height) * 0.125);
   if (nearest && nearestDistance <= snapDistance) {
     return applyPretendInteraction(pokemonSticker, nearest.item, nearest.reaction);
   }
@@ -1715,9 +1795,50 @@ function showPretendSparkle(sticker, mark = "✨") {
   window.setTimeout(() => sparkle.remove(), 980);
 }
 
+function isLightArtStage() {
+  return currentStickerBackground === "lightart" && stickerBoard?.classList.contains("boardLightart");
+}
+
+function showLightArtEffect(x, y, type = "tap") {
+  if (!isLightArtStage() || !window.stickerBoard) return;
+
+  const effect = document.createElement("div");
+  effect.className = `lightArtEffect lightArtEffect-${type}`;
+  effect.style.left = `${x}px`;
+  effect.style.top = `${y}px`;
+  effect.textContent = type === "bloom" ? "✦" : type === "food" ? "❀" : type === "step" ? "•" : "";
+  stickerBoard.appendChild(effect);
+  window.setTimeout(() => effect.remove(), type === "trail" ? 1700 : 1200);
+}
+
+function showLightArtEffectAtSticker(sticker, type = "tap") {
+  if (!sticker || !isLightArtStage()) return;
+  const boardRect = stickerBoard.getBoundingClientRect();
+  const rect = sticker.getBoundingClientRect();
+  showLightArtEffect(rect.left - boardRect.left + rect.width * 0.5, rect.top - boardRect.top + rect.height * 0.58, type);
+}
+
+function showLightArtTrail(from, to) {
+  if (!isLightArtStage() || !window.stickerBoard) return;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 8) return;
+
+  const trail = document.createElement("div");
+  trail.className = "lightArtTrail";
+  trail.style.left = `${from.x}px`;
+  trail.style.top = `${from.y}px`;
+  trail.style.width = `${length}px`;
+  trail.style.setProperty("--angle", `${Math.atan2(dy, dx)}rad`);
+  stickerBoard.appendChild(trail);
+  window.setTimeout(() => trail.remove(), 1400);
+}
+
 function playPokemonTap(sticker) {
   if (!sticker || sticker.dataset.type !== "pokemon") return;
   applyPokemonReaction(sticker, "happy");
+  showLightArtEffectAtSticker(sticker, "bloom");
   sticker.classList.remove("tapBounce");
   void sticker.offsetWidth;
   sticker.classList.add("tapBounce");
@@ -1812,13 +1933,19 @@ function walkPokemonRandomly(sticker) {
   sticker.dataset.lookTilt = "0";
   sticker.classList.add("isWalking");
   updateStickerTransform(sticker);
+  showLightArtEffectAtSticker(sticker, "step");
   sticker.style.left = `${nextX}%`;
   sticker.style.top = `${nextY}%`;
 
   window.setTimeout(() => {
     sticker.classList.remove("isWalking");
     updateStickerTransform(sticker);
+    showLightArtEffectAtSticker(sticker, "step");
+    const didPlay = tryAutonomousToyPlay(sticker);
     saveStickerScene();
+    if (!didPlay && Math.random() < 0.08) {
+      showPretendSparkle(sticker, "🎵");
+    }
   }, 2400);
 }
 
@@ -2110,6 +2237,8 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   lastPretendInteractionAt = Date.now();
   const sticker = event.target.closest(".sticker");
   if (!sticker) {
+    const boardRect = stickerBoard.getBoundingClientRect();
+    showLightArtEffect(event.clientX - boardRect.left, event.clientY - boardRect.top, "tap");
     selectSticker(null);
     closeStickerShelf();
     return;
