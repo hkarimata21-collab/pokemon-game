@@ -568,6 +568,7 @@ function hideAllPanels() {
   stopHiraganaGuide();
   stopPretendAutonomy();
   exitPretendLandscapeMode();
+  document.getElementById("clearStickerHeaderButton")?.classList.add("hidden");
   areaMenu.classList.add("hidden");
   placeholderPanel.classList.add("hidden");
   placeholderPanel.classList.remove("hiraganaPanel");
@@ -984,6 +985,7 @@ function openStickerPlay() {
   enterPretendLandscapeMode();
   updateLandscapeWarning();
   areaMenu.classList.add("hidden");
+  document.getElementById("clearStickerHeaderButton")?.classList.remove("hidden");
   stickerArea.classList.remove("hidden");
   renderStickerChoices();
   startPretendAutonomy();

@@ -115,6 +115,20 @@ p {
   font-size: 26px;
 }
 
+.appHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clearStickerHeaderButton {
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
 .townMap {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -3535,14 +3549,14 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 #stickerBoard.boardLightart {
   border-color: rgba(255, 255, 255, 0.78);
   background:
-    radial-gradient(circle at 18% 20%, rgba(255, 87, 205, 0.72) 0 8%, transparent 18%),
-    radial-gradient(circle at 84% 22%, rgba(78, 255, 181, 0.68) 0 7%, transparent 18%),
-    radial-gradient(circle at 58% 46%, rgba(255, 236, 84, 0.52) 0 6%, transparent 16%),
-    radial-gradient(circle at 32% 74%, rgba(88, 175, 255, 0.74) 0 9%, transparent 20%),
+    radial-gradient(circle at 18% 20%, rgba(255, 87, 205, 0.9) 0 9%, transparent 20%),
+    radial-gradient(circle at 84% 22%, rgba(78, 255, 181, 0.86) 0 8%, transparent 20%),
+    radial-gradient(circle at 58% 46%, rgba(255, 236, 84, 0.72) 0 8%, transparent 18%),
+    radial-gradient(circle at 32% 74%, rgba(88, 175, 255, 0.92) 0 11%, transparent 22%),
     linear-gradient(125deg, #25106d 0%, #6f21b8 24%, #0e8fc4 48%, #58d079 70%, #fff1a2 100%);
   background-size: 180% 180%, 160% 160%, 150% 150%, 170% 170%, 200% 200%;
   animation: lightArtFlow 16s ease-in-out infinite;
-  box-shadow: inset 0 0 54px rgba(255, 255, 255, 0.34), 0 18px 40px rgba(79, 26, 145, 0.22);
+  box-shadow: inset 0 0 76px rgba(255, 255, 255, 0.48), 0 18px 46px rgba(79, 26, 145, 0.3);
 }
 
 #stickerBoard.boardLightart::before {
@@ -3555,7 +3569,7 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
     radial-gradient(circle at 74% 35%, rgba(255,255,255,0.5) 0 1.6%, transparent 2.2%),
     radial-gradient(circle at 68% 70%, rgba(255,255,255,0.38) 0 1.4%, transparent 2.1%),
     linear-gradient(90deg, transparent 0 44%, rgba(255,255,255,0.55) 45% 46%, transparent 47% 100%);
-  opacity: 0.68;
+  opacity: 0.86;
   filter: blur(0.2px);
   pointer-events: none;
   animation: lightArtStars 9s linear infinite;
@@ -3567,10 +3581,10 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   left: -8%;
   right: -8%;
   bottom: 17%;
-  height: 12px;
+  height: 16px;
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), rgba(120,255,224,0.9), rgba(255,255,255,0.92), transparent);
-  box-shadow: 0 0 18px rgba(255,255,255,0.9), 0 0 34px rgba(62,244,255,0.55);
+  box-shadow: 0 0 24px rgba(255,255,255,0.98), 0 0 46px rgba(62,244,255,0.78);
   pointer-events: none;
   animation: lightArtRiver 4.8s ease-in-out infinite;
 }
@@ -3583,13 +3597,13 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 .lightArtEffect {
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(255,255,255,0.96) 0 14%, rgba(112,255,236,0.8) 15% 31%, rgba(255,80,221,0.44) 32% 55%, transparent 62%);
-  box-shadow: 0 0 22px rgba(255,255,255,0.8), 0 0 38px rgba(82,255,223,0.55);
-  animation: lightArtBurst 1120ms ease-out forwards;
+  box-shadow: 0 0 28px rgba(255,255,255,0.96), 0 0 54px rgba(82,255,223,0.76), 0 0 74px rgba(255,78,214,0.36);
+  animation: lightArtBurst 1280ms ease-out forwards;
   display: grid;
   place-items: center;
   color: white;
@@ -3598,37 +3612,48 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 .lightArtEffect-step {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   background: radial-gradient(circle, rgba(255,255,255,0.95) 0 18%, rgba(117,255,184,0.72) 20% 48%, transparent 60%);
   animation-duration: 1500ms;
 }
 
 .lightArtEffect-food {
-  width: 44px;
-  height: 44px;
+  width: 58px;
+  height: 58px;
   background: radial-gradient(circle, rgba(255,255,255,0.98) 0 12%, rgba(255,236,91,0.74) 13% 28%, rgba(255,98,201,0.52) 29% 55%, transparent 64%);
 }
 
 .lightArtEffect-bloom {
-  width: 58px;
-  height: 58px;
+  width: 78px;
+  height: 78px;
   background: conic-gradient(from 0deg, rgba(255,255,255,0.95), rgba(255,91,211,0.78), rgba(86,255,215,0.82), rgba(255,239,103,0.74), rgba(255,255,255,0.95));
   mask: radial-gradient(circle, transparent 0 28%, #000 30% 54%, transparent 56%);
   animation-duration: 1350ms;
 }
 
 .lightArtTrail {
-  height: 7px;
+  height: 10px;
   border-radius: 999px;
   transform-origin: left center;
   background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.95), rgba(90,255,221,0.85), rgba(255,98,210,0));
-  box-shadow: 0 0 12px rgba(255,255,255,0.9), 0 0 26px rgba(102,245,255,0.6);
+  box-shadow: 0 0 18px rgba(255,255,255,0.96), 0 0 38px rgba(102,245,255,0.78), 0 0 62px rgba(255,89,212,0.4);
   animation: lightArtTrailFade 1400ms ease-out forwards;
 }
 
+#stickerBoard.boardLightart .pokemonSticker {
+  min-width: 39px;
+  min-height: 39px;
+  padding: 2px;
+}
+
 #stickerBoard.boardLightart .pokemonSticker img {
-  filter: drop-shadow(0 0 10px rgba(255,255,255,0.72)) drop-shadow(0 8px 14px rgba(35,21,94,0.22));
+  width: 35px;
+  height: 35px;
+}
+
+#stickerBoard.boardLightart .pokemonSticker img {
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.95)) drop-shadow(0 0 18px rgba(90,255,225,0.55)) drop-shadow(0 6px 10px rgba(35,21,94,0.24));
 }
 
 @keyframes lightArtFlow {

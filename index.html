@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ポケモンまなびタウン</title>
-  <link rel="stylesheet" href="style.css?v=20260704-lightart2">
+  <link rel="stylesheet" href="style.css?v=20260704-lightart3">
   <link rel="icon" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -98,21 +98,16 @@
           <p id="areaKicker" class="eyebrow">ひろば</p>
           <h1 id="areaTitle">さんすう広場</h1>
         </div>
-        <button class="iconButton" onclick="openArea('dex')">📖</button>
+        <div class="appHeaderActions">
+          <button id="clearStickerHeaderButton" class="clearStickerHeaderButton hidden" onclick="clearStickers()">ぜんぶけす</button>
+          <button class="iconButton" onclick="openArea('dex')">📖</button>
+        </div>
       </header>
 
       <div id="areaMenu" class="menuGrid"></div>
       <div id="placeholderPanel" class="panel hidden"></div>
 
       <section id="stickerArea" class="panel stickerPanel hidden">
-        <div class="stickerTopbar">
-          <div>
-            <p class="eyebrow">🎨 おままごと広場</p>
-            <h2>ポケモンといっしょにあそぼう</h2>
-          </div>
-          <button onclick="clearStickers()">ぜんぶけす</button>
-        </div>
-
         <div class="stickerPlayLayout">
           <div id="stickerBoard" class="stickerBoard boardRoom" aria-label="ステッカーを貼る場所">
             <button type="button" id="stickerToolboxButton" class="stickerToolboxButton" onclick="toggleStickerToolbox()" aria-label="どうぐばこ">🎒</button>
@@ -178,7 +173,7 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260704-lightart2"></script>
+  <script src="app.js?v=20260704-lightart3"></script>
 </body>
 </html>
 
