@@ -3642,14 +3642,14 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
 }
 
 #stickerBoard.boardLightart .pokemonSticker {
-  min-width: 39px;
-  min-height: 39px;
-  padding: 2px;
+  min-width: 58px;
+  min-height: 58px;
+  padding: 3px;
 }
 
 #stickerBoard.boardLightart .pokemonSticker img {
-  width: 35px;
-  height: 35px;
+  width: 52px;
+  height: 52px;
 }
 
 #stickerBoard.boardLightart .pokemonSticker img {
