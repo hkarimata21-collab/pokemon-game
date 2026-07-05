@@ -1567,14 +1567,29 @@ function findPokemonNearToyLanding(toyItem, sourcePokemon, radius = 150) {
   return nearestPokemon && nearestDistance <= radius ? nearestPokemon : null;
 }
 
+function getRandomToyLanding(start) {
+  const distance = 40;
+  const angle = (-42 + Math.random() * 84) * Math.PI / 180;
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const dx = Math.cos(angle) * distance * direction;
+  const dy = Math.sin(angle) * distance * 0.72;
+
+  return {
+    x: Math.max(5, Math.min(92, start.x + dx)),
+    y: Math.max(9, Math.min(90, start.y + dy))
+  };
+}
+
 function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
   const boardRect = stickerBoard.getBoundingClientRect();
   const start = getStickerPercentPosition(toyItem);
-  const direction = options.direction || Number(sourcePokemon.dataset.facing || 1) || 1;
-  const flightPercent = 40;
+  const passCount = Number(options.passCount || 0);
+  const maxPasses = Number(options.maxPasses || 6);
+  const landing = getRandomToyLanding(start);
+  const direction = landing.x >= start.x ? 1 : -1;
   const liftPx = action.itemClass === "isKickedToy" ? -28 : -54;
-  const endX = Math.max(5, Math.min(92, start.x + direction * flightPercent));
-  const endY = Math.max(9, Math.min(90, start.y + (options.returned ? -2 : 2)));
+  const endX = landing.x;
+  const endY = landing.y;
   const dx = (endX - start.x) / 100 * boardRect.width;
   const dy = (endY - start.y) / 100 * boardRect.height;
   const baseTransform = toyItem.style.getPropertyValue("--rest-transform") || toyItem.style.transform || "translateY(0)";
@@ -1589,7 +1604,7 @@ function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
     { transform: `${baseTransform} translate(${dx * 0.52}px, ${dy * 0.52 + liftPx}px) rotate(${spin * 0.45 * direction}deg)`, offset: 0.52, easing: "ease-in-out" },
     { transform: `${baseTransform} translate(${dx}px, ${dy}px) rotate(${spin * direction}deg)`, offset: 1 }
   ], {
-    duration: options.returned ? 820 : 1160,
+    duration: 1040,
     easing: "cubic-bezier(0.16, 0.78, 0.24, 1)",
     fill: "forwards"
   });
@@ -1600,17 +1615,24 @@ function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
     showPretendSparkle(toyItem, action.bubble);
 
     const receiver = findPokemonNearToyLanding(toyItem, sourcePokemon);
-    if (receiver && !options.returned) {
+    if (receiver && passCount < maxPasses) {
       applyPokemonReaction(receiver, "playing", { quiet: true });
-      receiver.dataset.bubble = "↩️";
+      receiver.dataset.bubble = action.bubble;
       receiver.classList.add(action.pokemonClass);
       showPretendSparkle(receiver, action.bubble);
       pausePokemonAutonomy(receiver, 4800);
       window.setTimeout(() => playCry(Number(receiver.dataset.pokemonId || 0)), 260);
       sourcePokemon.classList.remove(action.pokemonClass);
       window.setTimeout(() => {
+        if (!toyItem.isConnected || !receiver.isConnected) {
+          toyItem.classList.remove("isFlyingToy", action.itemClass);
+          toyItem.dataset.isToyActing = "";
+          saveStickerScene();
+          return;
+        }
         receiver.classList.remove(action.pokemonClass);
-        animateToyArc(toyItem, receiver, action, { returned: true, direction: -direction });
+        receiver.classList.add(action.pokemonClass);
+        animateToyArc(toyItem, receiver, action, { passCount: passCount + 1, maxPasses });
       }, 520);
       return;
     }
