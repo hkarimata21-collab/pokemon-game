@@ -253,6 +253,7 @@ let stickerStartX = 0;
 let stickerStartY = 0;
 let stickerPendingPosition = null;
 let stickerMoveFrame = null;
+let stickerDragBounds = null;
 const stickerPointers = new Map();
 let pinchSticker = null;
 let pinchStartDistance = 0;
@@ -1358,7 +1359,7 @@ function updateStickerTransform(sticker) {
   sticker.style.transform = transform;
   sticker.style.setProperty("--rest-transform", transform);
 
-  if (sticker === selectedSticker) {
+  if (sticker === selectedSticker && !sticker.classList.contains("isDragging")) {
     updateStickerDeleteButton();
   }
 }
@@ -1872,11 +1873,11 @@ function playPokemonTap(sticker) {
 }
 
 function moveStickerToPointer(event) {
-  const boardRect = stickerBoard.getBoundingClientRect();
+  const boardRect = stickerDragBounds?.boardRect || stickerBoard.getBoundingClientRect();
   const x = event.clientX - boardRect.left - stickerOffsetX;
   const y = event.clientY - boardRect.top - stickerOffsetY;
-  const maxX = boardRect.width - activeSticker.offsetWidth;
-  const maxY = boardRect.height - activeSticker.offsetHeight;
+  const maxX = boardRect.width - (stickerDragBounds?.width || activeSticker.offsetWidth);
+  const maxY = boardRect.height - (stickerDragBounds?.height || activeSticker.offsetHeight);
   const clampedX = Math.max(0, Math.min(x, maxX));
   const clampedY = Math.max(0, Math.min(y, maxY));
 
@@ -1887,14 +1888,16 @@ function moveStickerToPointer(event) {
 
   if (stickerMoveFrame) return;
   stickerMoveFrame = requestAnimationFrame(() => {
-    if (activeSticker && stickerPendingPosition) {
-      activeSticker.style.left = stickerPendingPosition.left;
-      activeSticker.style.top = stickerPendingPosition.top;
-      updateStickerDeleteButton();
-    }
-    stickerPendingPosition = null;
+    flushPendingStickerMove();
     stickerMoveFrame = null;
   });
+}
+
+function flushPendingStickerMove() {
+  if (!activeSticker || !stickerPendingPosition) return;
+  activeSticker.style.left = stickerPendingPosition.left;
+  activeSticker.style.top = stickerPendingPosition.top;
+  stickerPendingPosition = null;
 }
 
 
@@ -2217,7 +2220,11 @@ function startStickerPinch(sticker, pair) {
   isPinchingSticker = true;
   stickerDragMoved = true;
   activeSticker = sticker;
+  if (stickerMoveFrame) cancelAnimationFrame(stickerMoveFrame);
+  stickerMoveFrame = null;
+  flushPendingStickerMove();
   sticker.classList.add("isDragging");
+  hideStickerDeleteButton();
   updateStickerTransform(sticker);
 }
 
@@ -2248,7 +2255,9 @@ function finishStickerPinchIfNeeded() {
   playStickerBounce(sticker);
   saveStickerScene();
   activeSticker = null;
+  stickerDragBounds = null;
   stickerDragMoved = false;
+  updateStickerDeleteButton();
   return true;
 }
 
@@ -2295,9 +2304,15 @@ stickerBoard.addEventListener("pointerdown", (event) => {
   }
 
   const rect = sticker.getBoundingClientRect();
+  stickerDragBounds = {
+    boardRect: stickerBoard.getBoundingClientRect(),
+    width: sticker.offsetWidth,
+    height: sticker.offsetHeight
+  };
   stickerOffsetX = event.clientX - rect.left;
   stickerOffsetY = event.clientY - rect.top;
   sticker.classList.add("isDragging");
+  hideStickerDeleteButton();
   updateStickerTransform(sticker);
 });
 
@@ -2339,6 +2354,9 @@ function finishStickerPointer(event) {
   }
 
   const sticker = activeSticker;
+  if (stickerMoveFrame) cancelAnimationFrame(stickerMoveFrame);
+  stickerMoveFrame = null;
+  flushPendingStickerMove();
   sticker.classList.remove("isDragging");
   updateStickerTransform(sticker);
 
@@ -2361,6 +2379,7 @@ function finishStickerPointer(event) {
   } catch (_) {}
 
   activeSticker = null;
+  stickerDragBounds = null;
   stickerDragMoved = false;
   updateStickerDeleteButton();
 }
