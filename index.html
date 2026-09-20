@@ -174,6 +174,14 @@
   </main>
 
   <script src="app.js?v=20260920-smooth-drag1"></script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
+          .catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
 
