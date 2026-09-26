@@ -3599,6 +3599,160 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   margin-top: 2px;
 }
 
+.learningReportPanel {
+  width: min(1040px, calc(100% - 20px));
+  margin-inline: auto;
+  padding: 18px;
+  overflow: visible;
+}
+
+.learningReportHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.learningReportHeader h2 {
+  margin: 4px 0 0;
+  font-size: clamp(22px, 4vw, 34px);
+}
+
+.learningReportScore {
+  display: grid;
+  min-width: 128px;
+  text-align: center;
+}
+
+.learningReportScore strong {
+  color: #e65468;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1;
+}
+
+.learningReportScore span,
+.learningTodayBand span {
+  color: #52636a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.learningTodayBand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border-block: 2px solid rgba(21, 110, 102, 0.12);
+  background: #fff9d9;
+  color: #34454c;
+}
+
+.learningReportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.learningReportCard {
+  min-width: 0;
+  padding: 14px;
+  border: 2px solid #d8e8e6;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.learningReportCard header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.learningReportCard h3,
+.learningReportCard p {
+  margin: 0;
+}
+
+.growthStage {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2f3;
+  color: #52636a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.growthStage.level1 { background: #fff1c7; color: #765315; }
+.growthStage.level2 { background: #d9f6ea; color: #12664e; }
+.growthStage.level3 { background: #ffe2ec; color: #a52c59; }
+
+.learningAccuracy {
+  height: 10px;
+  margin: 13px 0 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eff0;
+}
+
+.learningAccuracy span {
+  display: block;
+  width: var(--progress);
+  height: 100%;
+  border-radius: inherit;
+  background: #2cbf91;
+}
+
+.learningReportCard dl {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.learningReportCard dl div {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1.5fr);
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e8eeee;
+}
+
+.learningReportCard dt {
+  color: #62747a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.learningReportCard dd {
+  min-width: 0;
+  margin: 0;
+  color: #26383e;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.learningEmptyReport {
+  margin-top: 18px !important;
+  color: #66777c;
+}
+
+.learningPrivacyNote {
+  margin: 14px 0 0;
+  color: #637479;
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .learningReportPanel { padding: 13px; }
+  .learningReportGrid { grid-template-columns: 1fr; }
+  .learningReportHeader { align-items: flex-start; }
+  .learningTodayBand { gap: 10px 16px; }
+}
+
 #stickerBoard.boardLightart::before {
   content: "";
   position: absolute;

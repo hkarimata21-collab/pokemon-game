@@ -242,10 +242,15 @@ let currentB = 0;
 let currentLearningSkillKey = "";
 let learningQuestionStartedAt = 0;
 let learningQuestionMistakes = 0;
+let lastLearningDiagnosis = "";
 let learningHintTimer = 0;
 let kanaStrokeStartedAt = 0;
 let kanaStrokeMisses = 0;
 let kanaLetterMisses = 0;
+let kanaMaxProgress = 0;
+let kanaLastProgress = 0;
+let kanaReverseMoves = 0;
+let kanaTraceHotspots = [];
 let pendingLearningReward = null;
 let activeSticker = null;
 let selectedSticker = null;
@@ -374,7 +379,8 @@ const areaData = {
     kicker: "🎁 プレゼント広場",
     title: "プレゼント広場",
     items: [
-      { label: "ごほうびを見る", action: "showRewards()" }
+      { label: "ごほうびを見る", action: "showRewards()" },
+      { label: "まなびカルテ", action: "showLearningReport()" }
     ]
   }
 };
@@ -592,6 +598,7 @@ function hideAllPanels() {
   areaMenu.classList.add("hidden");
   placeholderPanel.classList.add("hidden");
   placeholderPanel.classList.remove("hiraganaPanel");
+  placeholderPanel.classList.remove("learningReportPanel");
   stickerArea.classList.add("hidden");
   gameScreen.classList.add("hidden");
   dexPanel.classList.add("hidden");
@@ -4905,13 +4912,14 @@ function getLearningAssistantState() {
   try {
     const saved = JSON.parse(localStorage.getItem(LEARNING_ASSISTANT_KEY) || "{}");
     return {
-      version: 1,
+      version: 2,
       modes: saved.modes && typeof saved.modes === "object" ? saved.modes : {},
+      days: saved.days && typeof saved.days === "object" ? saved.days : {},
       totalCorrect: Number(saved.totalCorrect) || 0,
       totalAttempts: Number(saved.totalAttempts) || 0
     };
   } catch (error) {
-    return { version: 1, modes: {}, totalCorrect: 0, totalAttempts: 0 };
+    return { version: 2, modes: {}, days: {}, totalCorrect: 0, totalAttempts: 0 };
   }
 }
 
@@ -4923,6 +4931,8 @@ function getLearningModeProfile(state, mode) {
   if (!state.modes[mode]) {
     state.modes[mode] = { skills: {}, recent: [] };
   }
+  state.modes[mode].skills ||= {};
+  state.modes[mode].recent ||= [];
   return state.modes[mode];
 }
 
@@ -4939,11 +4949,28 @@ function getLearningSkill(mode, key) {
     averageMs: 0,
     intervalLevel: 0,
     dueAt: 0,
-    lastSeen: 0
+    lastSeen: 0,
+    diagnostics: {},
+    hotspots: {}
   };
 }
 
-function recordLearningAttempt({ mode, key, correct, responseMs = 0, usedHint = false, weight = 1 }) {
+function getLearningDateKey(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  const local = new Date(timestamp - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function recordLearningAttempt({
+  mode,
+  key,
+  correct,
+  responseMs = 0,
+  usedHint = false,
+  weight = 1,
+  diagnosis = "",
+  hotspots = []
+}) {
   if (!mode || !key) return null;
   const state = getLearningAssistantState();
   const profile = getLearningModeProfile(state, mode);
@@ -4954,6 +4981,15 @@ function recordLearningAttempt({ mode, key, correct, responseMs = 0, usedHint = 
   skill.wrong += correct ? 0 : 1;
   skill.hintUses += usedHint ? 1 : 0;
   skill.lastSeen = now;
+  skill.diagnostics ||= {};
+  skill.hotspots ||= {};
+  if (diagnosis) {
+    skill.diagnostics[diagnosis] = (skill.diagnostics[diagnosis] || 0) + 1;
+  }
+  hotspots.forEach(position => {
+    const bucket = Math.max(0, Math.min(10, Math.round(Number(position) * 10)));
+    skill.hotspots[bucket] = (skill.hotspots[bucket] || 0) + 1;
+  });
   if (responseMs > 0) {
     skill.averageMs = skill.averageMs
       ? Math.round(skill.averageMs * 0.72 + responseMs * 0.28)
@@ -4977,8 +5013,17 @@ function recordLearningAttempt({ mode, key, correct, responseMs = 0, usedHint = 
   profile.skills[key] = skill;
   profile.recent = [
     ...(profile.recent || []),
-    { key, correct: Boolean(correct), at: now }
-  ].slice(-24);
+    { key, correct: Boolean(correct), diagnosis, responseMs: Math.round(responseMs), usedHint: Boolean(usedHint), at: now }
+  ].slice(-60);
+  const dayKey = getLearningDateKey(now);
+  state.days[dayKey] ||= { attempts: 0, correct: 0, hints: 0, modes: {} };
+  const day = state.days[dayKey];
+  day.attempts += 1;
+  day.correct += correct ? 1 : 0;
+  day.hints += usedHint ? 1 : 0;
+  day.modes[mode] ||= { attempts: 0, correct: 0 };
+  day.modes[mode].attempts += 1;
+  day.modes[mode].correct += correct ? 1 : 0;
   state.totalAttempts += 1;
   state.totalCorrect += correct ? 1 : 0;
   saveLearningAssistantState(state);
@@ -4995,6 +5040,140 @@ function getLearningModeSummary(mode) {
     mastery: skills.length ? skills.reduce((sum, skill) => sum + (skill.mastery || 0), 0) / skills.length : 0,
     practiced: skills.length
   };
+}
+
+const learningDiagnosisLabels = {
+  offByOne: "あと1こを数え直すと伸びる",
+  closeCount: "まとまりで数える練習中",
+  operatorMixup: "たす・ひくの見分けを練習中",
+  reversedOrder: "数の順番を確認すると伸びる",
+  rushed: "ゆっくり確かめるともっと正確",
+  repeated: "同じ問題を丁寧に復習中",
+  wrongStart: "書き始めの位置を練習中",
+  reverseDirection: "書く向きを練習中",
+  offPath: "線の上をゆっくり進む練習中",
+  incomplete: "最後までなぞる練習中",
+  traceRushed: "ゆっくりなぞるともっと上手"
+};
+
+const learningModeLabels = {
+  addition: "たし算",
+  subtraction: "ひき算",
+  hiragana: "ひらがな",
+  katakana: "カタカナ"
+};
+
+function getGrowthStage(skill) {
+  if (!skill || !skill.attempts) return { label: "これから", level: 0 };
+  if ((skill.mastery || 0) >= 0.82 && (skill.correct || 0) >= 3) return { label: "とくい！", level: 3 };
+  if ((skill.mastery || 0) >= 0.48 || (skill.streak || 0) >= 2) return { label: "できる", level: 2 };
+  return { label: "れんしゅう中", level: 1 };
+}
+
+function getModeReportSkills(mode, profile) {
+  return Object.entries(profile?.skills || {});
+}
+
+function getTopDiagnosis(profile) {
+  const counts = {};
+  Object.values(profile?.skills || {}).forEach(skill => {
+    Object.entries(skill.diagnostics || {}).forEach(([name, count]) => {
+      counts[name] = (counts[name] || 0) + count;
+    });
+  });
+  return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || "";
+}
+
+function formatLearningSkill(mode, key) {
+  if (mode === "hiragana" || mode === "katakana") {
+    return key.replace("char:", "").split(":")[0];
+  }
+  return key || "-";
+}
+
+function getConcentrationTrend(profile) {
+  const recent = (profile?.recent || []).slice(-12);
+  if (recent.length < 6) return "データをためています";
+  const split = Math.floor(recent.length / 2);
+  const first = recent.slice(0, split);
+  const last = recent.slice(split);
+  const firstRate = first.filter(item => item.correct).length / first.length;
+  const lastRate = last.filter(item => item.correct).length / last.length;
+  const lastSlow = last.filter(item => item.responseMs > 12000).length;
+  if (lastRate >= firstRate + 0.18) return "後半ほど調子が上がっています";
+  if (lastRate + 0.18 < firstRate || lastSlow >= Math.ceil(last.length / 2)) return "短めに休憩すると良さそうです";
+  return "集中が安定しています";
+}
+
+function getLearningModeReport(mode, state) {
+  const profile = state.modes[mode] || { skills: {}, recent: [] };
+  const skills = getModeReportSkills(mode, profile);
+  const totals = skills.reduce((result, [, skill]) => {
+    result.attempts += skill.attempts || 0;
+    result.correct += skill.correct || 0;
+    return result;
+  }, { attempts: 0, correct: 0 });
+  const practiced = skills.filter(([, skill]) => skill.attempts > 0);
+  const successful = practiced.filter(([, skill]) => (skill.correct || 0) > 0);
+  const strongest = [...successful].sort((left, right) => (right[1].mastery || 0) - (left[1].mastery || 0))[0];
+  const weakest = [...practiced].sort((left, right) => (left[1].mastery || 0) - (right[1].mastery || 0))[0];
+  const diagnosis = getTopDiagnosis(profile);
+  return {
+    label: learningModeLabels[mode],
+    attempts: totals.attempts,
+    accuracy: totals.attempts ? Math.round(totals.correct / totals.attempts * 100) : 0,
+    stage: getGrowthStage(strongest?.[1] || weakest?.[1]),
+    strongest: strongest ? formatLearningSkill(mode, strongest[0]) : "練習を始めたよ",
+    focus: weakest ? formatLearningSkill(mode, weakest[0]) : "まず遊んでみよう",
+    advice: diagnosis ? learningDiagnosisLabels[diagnosis] : "楽しく挑戦できています",
+    concentration: getConcentrationTrend(profile)
+  };
+}
+
+function showLearningReport() {
+  const state = getLearningAssistantState();
+  const today = state.days[getLearningDateKey()] || { attempts: 0, correct: 0, hints: 0 };
+  const reports = ["addition", "subtraction", "hiragana", "katakana"]
+    .map(mode => getLearningModeReport(mode, state));
+  const totalAccuracy = state.totalAttempts ? Math.round(state.totalCorrect / state.totalAttempts * 100) : 0;
+
+  hideAllPanels();
+  areaMenu.classList.remove("hidden");
+  placeholderPanel.classList.add("learningReportPanel");
+  placeholderPanel.innerHTML = `
+    <div class="learningReportHeader">
+      <div>
+        <p class="eyebrow">まなびカルテ</p>
+        <h2>できることが ふえているよ</h2>
+      </div>
+      <div class="learningReportScore"><strong>${totalAccuracy}%</strong><span>これまでの正解</span></div>
+    </div>
+    <div class="learningTodayBand">
+      <span>きょう</span>
+      <strong>${today.attempts}かい 挑戦</strong>
+      <strong>${today.correct}かい 正解</strong>
+      <strong>${today.hints}かい ヒント</strong>
+    </div>
+    <div class="learningReportGrid">
+      ${reports.map(report => `
+        <section class="learningReportCard">
+          <header><h3>${report.label}</h3><span class="growthStage level${report.stage.level}">${report.stage.label}</span></header>
+          ${report.attempts ? `
+            <div class="learningAccuracy"><span style="--progress:${report.accuracy}%"></span></div>
+            <p><strong>${report.accuracy}%</strong> 正解</p>
+            <dl>
+              <div><dt>よくできている</dt><dd>${report.strongest}</dd></div>
+              <div><dt>次に練習</dt><dd>${report.focus}</dd></div>
+              <div><dt>AIの見つけたこと</dt><dd>${report.advice}</dd></div>
+              <div><dt>集中の様子</dt><dd>${report.concentration}</dd></div>
+            </dl>
+          ` : `<p class="learningEmptyReport">遊ぶと、ここに成長が見えてくるよ。</p>`}
+        </section>
+      `).join("")}
+    </div>
+    <p class="learningPrivacyNote">学習記録はこの端末の中だけに保存されます。</p>
+  `;
+  placeholderPanel.classList.remove("hidden");
 }
 
 function getLearningCoachText(mode, key = currentLearningSkillKey) {
@@ -5358,6 +5537,11 @@ function getPointDistance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+function updateKanaCoach(text) {
+  const coachText = document.querySelector(".kanaLearningCoach strong");
+  if (coachText && text) coachText.textContent = text;
+}
+
 function getPathProgress(point, path, samples = 46) {
   const length = path.getTotalLength();
   let bestLength = 0;
@@ -5386,13 +5570,31 @@ function startHiraganaTrace(event) {
   const point = getHiraganaSvgPoint(event);
   const start = path.getPointAtLength(0);
   if (getPointDistance(point, start) > 22) {
+    const letter = getActiveKanaLetters()[currentHiraganaIndex];
+    const strokeKey = `char:${letter.char}:stroke:${currentHiraganaStroke + 1}`;
+    kanaStrokeMisses += 1;
+    kanaLetterMisses += 1;
+    recordLearningAttempt({
+      mode: currentKanaMode,
+      key: strokeKey,
+      correct: false,
+      responseMs: 0,
+      weight: 0.2,
+      diagnosis: "wrongStart"
+    });
     pulseHiraganaPoint("hiraganaStartPoint");
+    updateKanaCoach("みどりの まるから はじめよう");
+    speakLearningCue("みどりの まるから はじめよう");
     return;
   }
 
   event.preventDefault();
   hiraganaTraceActive = true;
   kanaStrokeStartedAt = performance.now();
+  kanaMaxProgress = 0;
+  kanaLastProgress = 0;
+  kanaReverseMoves = 0;
+  kanaTraceHotspots = [];
   hiraganaTracePoints = [point];
   updateHiraganaTraceLine();
 }
@@ -5402,6 +5604,12 @@ function moveHiraganaTrace(event) {
 
   event.preventDefault();
   const point = getHiraganaSvgPoint(event);
+  const path = getCurrentHiraganaPathElement();
+  const progress = path ? getPathProgress(point, path, 72) : { ratio: 0, distance: 0 };
+  if (progress.ratio + 0.045 < kanaLastProgress) kanaReverseMoves += 1;
+  kanaMaxProgress = Math.max(kanaMaxProgress, progress.ratio);
+  kanaLastProgress = progress.ratio;
+  if (progress.distance > 14) kanaTraceHotspots.push(progress.ratio);
   hiraganaTracePoints.push(point);
   updateHiraganaTraceLine();
 
@@ -5414,17 +5622,35 @@ function finishHiraganaTrace() {
   if (hiraganaTraceActive && hiraganaTracePoints.length >= 4) {
     const letter = getActiveKanaLetters()[currentHiraganaIndex];
     const strokeKey = `char:${letter.char}:stroke:${currentHiraganaStroke + 1}`;
+    const path = getCurrentHiraganaPathElement();
+    const fit = path ? getTracePathFit(hiraganaTracePoints, path) : { averageDistance: Infinity };
+    const durationMs = Math.max(0, performance.now() - kanaStrokeStartedAt);
+    const minimumCarefulTime = Math.max(500, (path?.getTotalLength?.() || 0) * 18);
+    let diagnosis = "offPath";
+    if (kanaReverseMoves >= 3) diagnosis = "reverseDirection";
+    else if (kanaMaxProgress < 0.78) diagnosis = "incomplete";
+    else if (fit.averageDistance > 14) diagnosis = "offPath";
+    else if (durationMs < minimumCarefulTime) diagnosis = "traceRushed";
+    const diagnosisCues = {
+      reverseDirection: "ひかる まると おなじ むきに すすもう",
+      incomplete: "ピンクの まるまで なぞろう",
+      offPath: "うすい もじの まんなかを なぞろう",
+      traceRushed: "もうすこし ゆっくり なぞろう"
+    };
     kanaStrokeMisses += 1;
     kanaLetterMisses += 1;
     recordLearningAttempt({
       mode: currentKanaMode,
       key: strokeKey,
       correct: false,
-      responseMs: Math.max(0, performance.now() - kanaStrokeStartedAt),
-      weight: 0.45
+      responseMs: durationMs,
+      weight: 0.45,
+      diagnosis,
+      hotspots: kanaTraceHotspots
     });
+    updateKanaCoach(diagnosisCues[diagnosis]);
     if (kanaStrokeMisses === 1) {
-      speakLearningCue("ひかる まるを ゆっくり おいかけよう");
+      speakLearningCue(diagnosisCues[diagnosis] || "ひかる まるを ゆっくり おいかけよう");
     }
   }
   hiraganaTraceActive = false;
@@ -5729,7 +5955,9 @@ function showHint(isAutomatic = false) {
   hintUsed = true;
   hintButton.style.display = "none";
   createQuestion();
-  const cue = isAutomatic ? "いっしょに かぞえてみよう" : "えを かぞえてみよう";
+  const cue = isAutomatic && lastLearningDiagnosis
+    ? getMathDiagnosisCue(lastLearningDiagnosis)
+    : "えを かぞえてみよう";
   renderLearningCoach(cue);
   speakLearningCue(cue);
 }
@@ -5774,6 +6002,7 @@ function loadPokemon() {
   nextArea.classList.add("hidden");
   message.textContent = `${currentPokemon.name}が あらわれた！`;
   hintUsed = false;
+  lastLearningDiagnosis = "";
   hintButton.style.display = "inline-block";
   createQuestion();
 }
@@ -5781,6 +6010,32 @@ function loadPokemon() {
 function changePokemon() {
   catchCount = 0;
   loadPokemon();
+}
+
+function analyzeMathMistake(value, elapsedMs) {
+  const numericValue = Number(value);
+  const oppositeAnswer = currentLearningMode === "subtraction"
+    ? currentA + currentB
+    : Math.abs(currentA - currentB);
+  if (numericValue === oppositeAnswer && oppositeAnswer !== currentAnswer) return "operatorMixup";
+  if (currentLearningMode === "subtraction" && numericValue === currentB - currentA) return "reversedOrder";
+  if (Math.abs(numericValue - currentAnswer) === 1) return "offByOne";
+  if (Math.abs(numericValue - currentAnswer) <= 3) return "closeCount";
+  if (elapsedMs < 2500) return "rushed";
+  if (learningQuestionMistakes > 1) return "repeated";
+  return "closeCount";
+}
+
+function getMathDiagnosisCue(diagnosis) {
+  const cues = {
+    offByOne: "あと ひとつだけ、もういちど かぞえよう",
+    closeCount: "えを ゆびで ひとつずつ かぞえよう",
+    operatorMixup: currentLearningMode === "subtraction" ? "ひき算は へらすよ" : "たし算は いっしょにするよ",
+    reversedOrder: "おおきい かずから へらしてみよう",
+    rushed: "ゆっくりで だいじょうぶ",
+    repeated: "えの まとまりを いっしょに かぞえよう"
+  };
+  return cues[diagnosis] || "いっしょに かぞえてみよう";
 }
 
 function checkAnswer() {
@@ -5811,19 +6066,23 @@ function checkAnswer() {
     speakLearningCue("せいかい！ よくできたね");
   } else {
     learningQuestionMistakes += 1;
+    const elapsedMs = Math.max(0, performance.now() - learningQuestionStartedAt);
+    lastLearningDiagnosis = analyzeMathMistake(value, elapsedMs);
+    const diagnosisCue = getMathDiagnosisCue(lastLearningDiagnosis);
     recordLearningAttempt({
       mode: currentLearningMode,
       key: currentLearningSkillKey,
       correct: false,
-      responseMs: Math.max(0, performance.now() - learningQuestionStartedAt)
+      responseMs: elapsedMs,
+      diagnosis: lastLearningDiagnosis
     });
     playSound("wrong.mp3");
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
     message.textContent = "おしい！もういちどがんばれ！";
     answerInput.value = "";
-    renderLearningCoach("ゆっくり かぞえれば だいじょうぶ");
-    speakLearningCue("おしい！ ゆっくり かぞえてみよう");
+    renderLearningCoach(diagnosisCue);
+    speakLearningCue(`おしい！ ${diagnosisCue}`);
     if (learningQuestionMistakes >= 2) showHint(true);
   }
 }
