@@ -3559,6 +3559,46 @@ body.pretendLandscapeOnly #stickerBoard.stickerBoard {
   box-shadow: inset 0 0 76px rgba(255, 255, 255, 0.48), 0 18px 46px rgba(79, 26, 145, 0.3);
 }
 
+.learningCoach {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: min(460px, calc(100% - 16px));
+  min-height: 48px;
+  margin: 10px auto;
+  padding: 7px 10px;
+  border: 2px solid rgba(31, 130, 112, 0.18);
+  border-radius: 8px;
+  background: rgba(235, 255, 248, 0.94);
+  color: #175d53;
+  font-size: clamp(14px, 2.8vw, 18px);
+}
+
+.learningCoachFace {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.learningCoach strong {
+  flex: 1;
+  text-align: center;
+}
+
+.learningCoachVoice {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.kanaLearningCoach {
+  margin-top: 2px;
+}
+
 #stickerBoard.boardLightart::before {
   content: "";
   position: absolute;

@@ -239,6 +239,14 @@ let catchResolved = false;
 let hintUsed = false;
 let currentA = 0;
 let currentB = 0;
+let currentLearningSkillKey = "";
+let learningQuestionStartedAt = 0;
+let learningQuestionMistakes = 0;
+let learningHintTimer = 0;
+let kanaStrokeStartedAt = 0;
+let kanaStrokeMisses = 0;
+let kanaLetterMisses = 0;
+let pendingLearningReward = null;
 let activeSticker = null;
 let selectedSticker = null;
 let currentStickerBackground = "forest";
@@ -575,6 +583,8 @@ window.addEventListener("resize", updateLandscapeWarning);
 window.addEventListener("orientationchange", () => window.setTimeout(updateLandscapeWarning, 150));
 
 function hideAllPanels() {
+  clearLearningHintTimer();
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   stopHiraganaGuide();
   stopPretendAutonomy();
   exitPretendLandscapeMode();
@@ -4888,6 +4898,262 @@ const katakanaLetters = katakanaData.groups.basicKatakana.map(letter => ({
   }))
 }));
 
+const LEARNING_ASSISTANT_KEY = "learningAssistantV1";
+const LEARNING_VOICE_KEY = "learningCoachVoice";
+
+function getLearningAssistantState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LEARNING_ASSISTANT_KEY) || "{}");
+    return {
+      version: 1,
+      modes: saved.modes && typeof saved.modes === "object" ? saved.modes : {},
+      totalCorrect: Number(saved.totalCorrect) || 0,
+      totalAttempts: Number(saved.totalAttempts) || 0
+    };
+  } catch (error) {
+    return { version: 1, modes: {}, totalCorrect: 0, totalAttempts: 0 };
+  }
+}
+
+function saveLearningAssistantState(state) {
+  localStorage.setItem(LEARNING_ASSISTANT_KEY, JSON.stringify(state));
+}
+
+function getLearningModeProfile(state, mode) {
+  if (!state.modes[mode]) {
+    state.modes[mode] = { skills: {}, recent: [] };
+  }
+  return state.modes[mode];
+}
+
+function getLearningSkill(mode, key) {
+  const state = getLearningAssistantState();
+  const profile = getLearningModeProfile(state, mode);
+  return profile.skills[key] || {
+    attempts: 0,
+    correct: 0,
+    wrong: 0,
+    hintUses: 0,
+    streak: 0,
+    mastery: 0,
+    averageMs: 0,
+    intervalLevel: 0,
+    dueAt: 0,
+    lastSeen: 0
+  };
+}
+
+function recordLearningAttempt({ mode, key, correct, responseMs = 0, usedHint = false, weight = 1 }) {
+  if (!mode || !key) return null;
+  const state = getLearningAssistantState();
+  const profile = getLearningModeProfile(state, mode);
+  const skill = profile.skills[key] || getLearningSkill(mode, key);
+  const now = Date.now();
+  skill.attempts += 1;
+  skill.correct += correct ? 1 : 0;
+  skill.wrong += correct ? 0 : 1;
+  skill.hintUses += usedHint ? 1 : 0;
+  skill.lastSeen = now;
+  if (responseMs > 0) {
+    skill.averageMs = skill.averageMs
+      ? Math.round(skill.averageMs * 0.72 + responseMs * 0.28)
+      : Math.round(responseMs);
+  }
+
+  if (correct) {
+    skill.streak += 1;
+    const gain = (usedHint ? 0.055 : 0.1) * weight;
+    skill.mastery = Math.min(1, skill.mastery + gain + Math.min(skill.streak, 4) * 0.008);
+    skill.intervalLevel = Math.min(5, skill.intervalLevel + 1);
+    const intervals = [2 * 60e3, 30 * 60e3, 6 * 3600e3, 24 * 3600e3, 3 * 86400e3, 7 * 86400e3];
+    skill.dueAt = now + intervals[skill.intervalLevel];
+  } else {
+    skill.streak = 0;
+    skill.mastery = Math.max(0, skill.mastery - 0.075 * weight);
+    skill.intervalLevel = Math.max(0, skill.intervalLevel - 1);
+    skill.dueAt = now + 90 * 1000;
+  }
+
+  profile.skills[key] = skill;
+  profile.recent = [
+    ...(profile.recent || []),
+    { key, correct: Boolean(correct), at: now }
+  ].slice(-24);
+  state.totalAttempts += 1;
+  state.totalCorrect += correct ? 1 : 0;
+  saveLearningAssistantState(state);
+  return skill;
+}
+
+function getLearningModeSummary(mode) {
+  const state = getLearningAssistantState();
+  const profile = getLearningModeProfile(state, mode);
+  const skills = Object.values(profile.skills || {});
+  const recent = (profile.recent || []).slice(-12);
+  return {
+    accuracy: recent.length ? recent.filter(item => item.correct).length / recent.length : 0.58,
+    mastery: skills.length ? skills.reduce((sum, skill) => sum + (skill.mastery || 0), 0) / skills.length : 0,
+    practiced: skills.length
+  };
+}
+
+function getLearningCoachText(mode, key = currentLearningSkillKey) {
+  const skill = key ? getLearningSkill(mode, key) : null;
+  if (!skill || !skill.attempts) return "いっしょに やってみよう";
+  if ((skill.mastery || 0) >= 0.82) return "とくいだね！ つぎへ すすもう";
+  if ((skill.wrong || 0) > (skill.correct || 0)) return "ゆっくりで だいじょうぶ";
+  if ((skill.streak || 0) >= 2) return `${skill.streak}かい れんぞく！`;
+  return "いいちょうし！";
+}
+
+function isLearningVoiceEnabled() {
+  return localStorage.getItem(LEARNING_VOICE_KEY) !== "off";
+}
+
+function speakLearningCue(text, force = false) {
+  if (!text || !isLearningVoiceEnabled() || !("speechSynthesis" in window)) return;
+  if (!force && document.hidden) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ja-JP";
+  utterance.rate = 0.86;
+  utterance.pitch = 1.12;
+  utterance.volume = 0.9;
+  window.speechSynthesis.speak(utterance);
+}
+
+function toggleLearningCoachVoice() {
+  const enabled = !isLearningVoiceEnabled();
+  localStorage.setItem(LEARNING_VOICE_KEY, enabled ? "on" : "off");
+  if ((currentLearningMode === "hiragana" || currentLearningMode === "katakana") && !placeholderPanel.classList.contains("hidden")) {
+    renderHiraganaPractice();
+  } else {
+    renderLearningCoach();
+  }
+  if (enabled) speakLearningCue("いっしょに がんばろう", true);
+}
+
+function ensureLearningCoach() {
+  let coach = document.getElementById("learningCoach");
+  if (coach || !window.questionArea) return coach;
+  coach = document.createElement("div");
+  coach.id = "learningCoach";
+  coach.className = "learningCoach";
+  questionArea.insertBefore(coach, questionArea.querySelector(".buttonRow"));
+  return coach;
+}
+
+function renderLearningCoach(text = "") {
+  const coach = ensureLearningCoach();
+  if (!coach) return;
+  const mode = currentLearningMode;
+  coach.innerHTML = `
+    <span class="learningCoachFace" aria-hidden="true">${mode === "hiragana" || mode === "katakana" ? "✏️" : "💡"}</span>
+    <strong>${text || getLearningCoachText(mode)}</strong>
+    <button type="button" class="learningCoachVoice" onclick="toggleLearningCoachVoice()" aria-label="こえのヒントをきりかえ">${isLearningVoiceEnabled() ? "🔊" : "🔇"}</button>
+  `;
+}
+
+function clearLearningHintTimer() {
+  window.clearTimeout(learningHintTimer);
+  learningHintTimer = 0;
+}
+
+function scheduleMathHint() {
+  clearLearningHintTimer();
+  const skillKey = currentLearningSkillKey;
+  const delay = getLearningSkill(currentLearningMode, skillKey).wrong > 1 ? 5600 : 8000;
+  learningHintTimer = window.setTimeout(() => {
+    if (skillKey !== currentLearningSkillKey || questionArea.classList.contains("hidden") || hintUsed) return;
+    showHint(true);
+  }, delay);
+}
+
+function getMathDifficulty(mode) {
+  const summary = getLearningModeSummary(mode);
+  if (summary.practiced < 4 || summary.accuracy < 0.58) return 5;
+  if (summary.accuracy < 0.76 || summary.mastery < 0.48) return 10;
+  if (summary.accuracy < 0.9 || summary.mastery < 0.72) return 15;
+  return 20;
+}
+
+function getMathSkillKey(mode, a, b) {
+  if (mode === "addition") {
+    const low = Math.min(a, b);
+    const high = Math.max(a, b);
+    return `${low}+${high}`;
+  }
+  return `${a}-${b}`;
+}
+
+function chooseAdaptiveMathQuestion(mode) {
+  const maxOperand = getMathDifficulty(mode);
+  const now = Date.now();
+  const candidates = [];
+  for (let i = 0; i < 42; i++) {
+    let a = Math.floor(Math.random() * maxOperand) + 1;
+    let b = Math.floor(Math.random() * maxOperand) + 1;
+    if (mode === "subtraction" && b > a) [a, b] = [b, a];
+    const key = getMathSkillKey(mode, a, b);
+    const skill = getLearningSkill(mode, key);
+    const isDue = !skill.dueAt || skill.dueAt <= now;
+    const unseenBonus = skill.attempts ? 0 : 2.2;
+    const weakBonus = (1 - (skill.mastery || 0)) * 3.2;
+    const mistakeBonus = Math.min(2, (skill.wrong || 0) * 0.45);
+    const dueBonus = isDue ? 2.4 : -2.5;
+    const repeatPenalty = key === currentLearningSkillKey ? 4 : 0;
+    candidates.push({ a, b, key, score: unseenBonus + weakBonus + mistakeBonus + dueBonus + Math.random() * 1.8 - repeatPenalty });
+  }
+  candidates.sort((left, right) => right.score - left.score);
+  return candidates[0];
+}
+
+function chooseAdaptiveKanaIndex(mode, currentIndex) {
+  const letters = kanaPracticeConfigs[mode]?.letters || [];
+  const now = Date.now();
+  const choices = letters.map((letter, index) => {
+    const skill = getLearningSkill(mode, `char:${letter.char}`);
+    const due = !skill.dueAt || skill.dueAt <= now;
+    const sequentialBonus = index === (currentIndex + 1) % letters.length ? 1.8 : 0;
+    const weakBonus = (1 - (skill.mastery || 0)) * 3;
+    const unseenBonus = skill.attempts ? 0 : 2.4;
+    const masteredPenalty = skill.mastery >= 0.82 && !due ? 4 : 0;
+    return { index, score: sequentialBonus + weakBonus + unseenBonus + (due ? 1.8 : 0) - masteredPenalty + Math.random() };
+  });
+  choices.sort((left, right) => right.score - left.score);
+  return choices[0]?.index ?? ((currentIndex + 1) % letters.length);
+}
+
+function chooseAdaptiveLearningReward(result = {}) {
+  const owned = getOwnedRewards();
+  const preferred = result.mistakes > 0 || result.usedHint
+    ? ["food", "furniture", "decoration", "background", "building"]
+    : result.mastery >= 0.75
+      ? ["decoration", "background", "building", "furniture", "food"]
+      : ["furniture", "decoration", "food", "background", "building"];
+
+  for (const category of preferred) {
+    const candidate = (rewards[category] || []).find(item =>
+      !(owned[category] || []).includes(normalizeRewardId(item.id))
+    );
+    if (candidate) return { ...candidate, category };
+  }
+  return getRandomKanaRewardCandidate();
+}
+
+function queueAdaptiveLearningReward(result = {}) {
+  pendingLearningReward = chooseAdaptiveLearningReward(result);
+  return pendingLearningReward;
+}
+
+function grantPendingLearningReward(delay = 0) {
+  if (!pendingLearningReward) return null;
+  const reward = pendingLearningReward;
+  pendingLearningReward = null;
+  window.setTimeout(() => addOwnedReward(reward.category, reward.id), delay);
+  return reward;
+}
+
 const kanaPracticeConfigs = {
   hiragana: {
     mode: "hiragana",
@@ -4937,6 +5203,8 @@ function startKatakanaPractice(index = 0) {
 
 function startKanaPractice(mode = "hiragana", index = 0) {
   const config = kanaPracticeConfigs[mode] || kanaPracticeConfigs.hiragana;
+  clearLearningHintTimer();
+  pendingLearningReward = null;
   currentKanaMode = config.mode;
   currentLearningMode = config.mode;
   hideAllPanels();
@@ -4945,6 +5213,8 @@ function startKanaPractice(mode = "hiragana", index = 0) {
   placeholderPanel.classList.remove("hidden");
   currentHiraganaIndex = Math.max(0, Math.min(config.letters.length - 1, index));
   currentHiraganaStroke = 0;
+  kanaStrokeMisses = 0;
+  kanaLetterMisses = 0;
   hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
@@ -4954,6 +5224,7 @@ function renderHiraganaPractice() {
   const config = getActiveKanaConfig();
   const letters = config.letters;
   const letter = letters[currentHiraganaIndex];
+  currentLearningSkillKey = `char:${letter.char}`;
   placeholderPanel.innerHTML = `
     <div class="hiraganaShell">
       <div class="hiraganaHeader">
@@ -5004,6 +5275,11 @@ function renderHiraganaPractice() {
         <strong>${currentHiraganaStroke + 1}かくめ</strong>
         <span>ひかる まるを ゆっくり おいかけよう</span>
       </div>
+      <div class="learningCoach kanaLearningCoach">
+        <span class="learningCoachFace" aria-hidden="true">✏️</span>
+        <strong>${getLearningCoachText(currentKanaMode, currentLearningSkillKey)}</strong>
+        <button type="button" class="learningCoachVoice" onclick="toggleLearningCoachVoice()" aria-label="こえのヒントをきりかえ">${isLearningVoiceEnabled() ? "🔊" : "🔇"}</button>
+      </div>
       <div class="hiraganaActions">
         <button type="button" onclick="resetHiraganaLetter()">もういちど</button>
         <button type="button" onclick="selectHiraganaLetter(${(currentHiraganaIndex + 1) % letters.length})">つぎのもじ</button>
@@ -5018,12 +5294,16 @@ function selectHiraganaLetter(index) {
   const letters = getActiveKanaLetters();
   currentHiraganaIndex = Math.max(0, Math.min(letters.length - 1, index));
   currentHiraganaStroke = 0;
+  kanaStrokeMisses = 0;
+  kanaLetterMisses = 0;
   hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
 
 function resetHiraganaLetter() {
   currentHiraganaStroke = 0;
+  kanaStrokeMisses = 0;
+  kanaLetterMisses = 0;
   hiraganaCompletedTraceLines = [];
   renderHiraganaPractice();
 }
@@ -5112,6 +5392,7 @@ function startHiraganaTrace(event) {
 
   event.preventDefault();
   hiraganaTraceActive = true;
+  kanaStrokeStartedAt = performance.now();
   hiraganaTracePoints = [point];
   updateHiraganaTraceLine();
 }
@@ -5130,6 +5411,22 @@ function moveHiraganaTrace(event) {
 }
 
 function finishHiraganaTrace() {
+  if (hiraganaTraceActive && hiraganaTracePoints.length >= 4) {
+    const letter = getActiveKanaLetters()[currentHiraganaIndex];
+    const strokeKey = `char:${letter.char}:stroke:${currentHiraganaStroke + 1}`;
+    kanaStrokeMisses += 1;
+    kanaLetterMisses += 1;
+    recordLearningAttempt({
+      mode: currentKanaMode,
+      key: strokeKey,
+      correct: false,
+      responseMs: Math.max(0, performance.now() - kanaStrokeStartedAt),
+      weight: 0.45
+    });
+    if (kanaStrokeMisses === 1) {
+      speakLearningCue("ひかる まるを ゆっくり おいかけよう");
+    }
+  }
   hiraganaTraceActive = false;
 }
 
@@ -5187,11 +5484,21 @@ function completeHiraganaStroke() {
   if (traceLine) {
     hiraganaCompletedTraceLines[currentHiraganaStroke] = traceLine;
   }
+  const letter = getActiveKanaLetters()[currentHiraganaIndex];
+  const strokeKey = `char:${letter.char}:stroke:${currentHiraganaStroke + 1}`;
+  recordLearningAttempt({
+    mode: currentKanaMode,
+    key: strokeKey,
+    correct: true,
+    responseMs: Math.max(0, performance.now() - kanaStrokeStartedAt),
+    usedHint: kanaStrokeMisses > 0,
+    weight: 0.55
+  });
   playSound("correct.mp3");
   showHiraganaSparkle();
   currentHiraganaStroke++;
+  kanaStrokeMisses = 0;
 
-  const letter = getActiveKanaLetters()[currentHiraganaIndex];
   if (currentHiraganaStroke >= letter.strokes.length) {
     completeHiraganaLetter();
     return;
@@ -5205,6 +5512,13 @@ function completeHiraganaLetter() {
   const config = getActiveKanaConfig();
   const letters = config.letters;
   const letter = letters[currentHiraganaIndex];
+  const charSkill = recordLearningAttempt({
+    mode: currentKanaMode,
+    key: `char:${letter.char}`,
+    correct: true,
+    responseMs: 0,
+    usedHint: kanaLetterMisses > 0
+  });
   const completed = JSON.parse(localStorage.getItem(config.completedKey) || "[]");
   const isFirstClear = !completed.includes(letter.char);
 
@@ -5213,7 +5527,13 @@ function completeHiraganaLetter() {
     localStorage.setItem(config.completedKey, JSON.stringify(completed));
   }
 
-  pendingHiraganaNextIndex = (currentHiraganaIndex + 1) % letters.length;
+  pendingHiraganaNextIndex = chooseAdaptiveKanaIndex(currentKanaMode, currentHiraganaIndex);
+  queueAdaptiveLearningReward({
+    mode: currentKanaMode,
+    mastery: charSkill?.mastery || 0,
+    mistakes: kanaLetterMisses,
+    usedHint: kanaLetterMisses > 0
+  });
   window.setTimeout(() => {
     placeholderPanel.innerHTML = `
       <div class="hiraganaClear">
@@ -5245,8 +5565,6 @@ function startHiraganaPokemonEncounter(letter) {
   catchEffect.style.display = "none";
 
   currentPokemon = getRandomPokemon();
-  const toolReward = awardRandomLearningToolReward();
-  const toolRewardText = toolReward ? ` ${getRewardLabel(toolReward.category, toolReward.id)}も ゲット！` : "";
   pokemonName.textContent = currentPokemon.name;
   pokemonImage.dataset.fallbackTried = "false";
   pokemonImage.onerror = () => handlePokemonImageError(pokemonImage, currentPokemon.pokemonId);
@@ -5255,7 +5573,7 @@ function startHiraganaPokemonEncounter(letter) {
   catchArea.classList.remove("hidden");
   nextArea.classList.add("hidden");
   nextButton.textContent = "つぎのもじ";
-  message.textContent = `「${letter.char}」が かけた！ ${currentPokemon.name}が あらわれた！${toolRewardText}`;
+  message.textContent = `「${letter.char}」が かけた！ ${currentPokemon.name}が あらわれた！`;
 
   const hud = document.getElementById("learningRewardHud");
   if (hud) hud.classList.add("hidden");
@@ -5298,7 +5616,11 @@ function moveHiraganaGuideOnPath(path, guide, progress) {
 
 function getHiraganaGuideDuration(path) {
   const length = path?.getTotalLength?.() || 0;
-  const duration = length * 52;
+  const letter = getActiveKanaLetters()[currentHiraganaIndex];
+  const strokeKey = `char:${letter?.char || ""}:stroke:${currentHiraganaStroke + 1}`;
+  const skill = getLearningSkill(currentKanaMode, strokeKey);
+  const difficultySlowdown = 1 + Math.min(0.75, (skill.wrong || 0) * 0.12 + (1 - (skill.mastery || 0)) * 0.18);
+  const duration = length * 52 * difficultySlowdown;
   return Math.max(1800, Math.min(7600, duration));
 }
 
@@ -5355,13 +5677,12 @@ function getRandomPokemon() {
 function createQuestion() {
   const isSubtraction = currentLearningMode === "subtraction";
   if (!hintUsed) {
-    if (isSubtraction) {
-      currentA = Math.floor(Math.random() * 9) + 2;
-      currentB = Math.floor(Math.random() * currentA) + 1;
-    } else {
-      currentA = Math.floor(Math.random() * 10) + 1;
-      currentB = Math.floor(Math.random() * 10) + 1;
-    }
+    const adaptiveQuestion = chooseAdaptiveMathQuestion(currentLearningMode);
+    currentA = adaptiveQuestion.a;
+    currentB = adaptiveQuestion.b;
+    currentLearningSkillKey = adaptiveQuestion.key;
+    learningQuestionStartedAt = performance.now();
+    learningQuestionMistakes = 0;
   }
 
   const a = currentA;
@@ -5399,12 +5720,18 @@ function createQuestion() {
   }
 
   renderLearningHud();
+  renderLearningCoach();
+  scheduleMathHint();
 }
 
-function showHint() {
+function showHint(isAutomatic = false) {
+  if (hintUsed) return;
   hintUsed = true;
   hintButton.style.display = "none";
   createQuestion();
+  const cue = isAutomatic ? "いっしょに かぞえてみよう" : "えを かぞえてみよう";
+  renderLearningCoach(cue);
+  speakLearningCue(cue);
 }
 
 function resetCatchLock() {
@@ -5424,6 +5751,8 @@ function lockCatchThrow() {
 }
 
 function loadPokemon() {
+  clearLearningHintTimer();
+  pendingLearningReward = null;
   resetCatchLock();
   ballImg.classList.remove("throw", "shake-3", "shake-once");
   ballImg.style.transform = "";
@@ -5459,17 +5788,43 @@ function checkAnswer() {
   if (value === "") return;
 
   if (Number(value) === currentAnswer) {
+    clearLearningHintTimer();
+    const skill = recordLearningAttempt({
+      mode: currentLearningMode,
+      key: currentLearningSkillKey,
+      correct: true,
+      responseMs: Math.max(0, performance.now() - learningQuestionStartedAt),
+      usedHint: hintUsed
+    });
+    queueAdaptiveLearningReward({
+      mode: currentLearningMode,
+      mastery: skill?.mastery || 0,
+      mistakes: learningQuestionMistakes,
+      usedHint: hintUsed
+    });
     playSound("correct.mp3");
     resetCatchLock();
     questionArea.classList.add("hidden");
     catchArea.classList.remove("hidden");
     message.textContent = "せいかい！";
-    awardNextLearningReward();
+    renderLearningCoach((skill?.streak || 0) >= 2 ? `${skill.streak}かい れんぞく！` : "せいかい！");
+    speakLearningCue("せいかい！ よくできたね");
   } else {
+    learningQuestionMistakes += 1;
+    recordLearningAttempt({
+      mode: currentLearningMode,
+      key: currentLearningSkillKey,
+      correct: false,
+      responseMs: Math.max(0, performance.now() - learningQuestionStartedAt)
+    });
     playSound("wrong.mp3");
     catchArea.classList.add("hidden");
     nextArea.classList.add("hidden");
     message.textContent = "おしい！もういちどがんばれ！";
+    answerInput.value = "";
+    renderLearningCoach("ゆっくり かぞえれば だいじょうぶ");
+    speakLearningCue("おしい！ ゆっくり かぞえてみよう");
+    if (learningQuestionMistakes >= 2) showHint(true);
   }
 }
 
@@ -5515,6 +5870,7 @@ async function throwBall() {
 }
 
 function nextPokemon() {
+  clearLearningHintTimer();
   resetCatchLock();
   ballImg.style.display = "none";
   ballImg.classList.remove("shake-3", "throw", "shake-once");
@@ -5547,6 +5903,7 @@ function catchPokemon() {
     playSound("get.mp3");
     savePokemon();
     const gotNewPokemonReward = addOwnedReward("pokemon", currentPokemon.dexNo);
+    grantPendingLearningReward(gotNewPokemonReward ? 700 : 0);
     catchCount = 0;
     catchEffect.classList.remove("catch-show");
     void catchEffect.offsetWidth;

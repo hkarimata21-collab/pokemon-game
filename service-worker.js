@@ -1,4 +1,4 @@
-const CACHE_VERSION = "20260926-life-ai1";
+const CACHE_VERSION = "20260926-learning-ai1";
 const APP_CACHE = `manabi-app-${CACHE_VERSION}`;
 const MEDIA_CACHE = `manabi-media-${CACHE_VERSION}`;
 const CACHE_PREFIX = "manabi-";
@@ -6,8 +6,8 @@ const CACHE_PREFIX = "manabi-";
 const APP_FILES = [
   "./",
   "./index.html",
-  "./app.js?v=20260926-life-ai1",
-  "./style.css?v=20260920-smooth-drag1",
+  "./app.js?v=20260926-learning-ai1",
+  "./style.css?v=20260926-learning-ai1",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon.png",
