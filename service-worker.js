@@ -1,4 +1,4 @@
-const CACHE_VERSION = "20260920-home-app1";
+const CACHE_VERSION = "20260926-life-ai1";
 const APP_CACHE = `manabi-app-${CACHE_VERSION}`;
 const MEDIA_CACHE = `manabi-media-${CACHE_VERSION}`;
 const CACHE_PREFIX = "manabi-";
@@ -6,7 +6,7 @@ const CACHE_PREFIX = "manabi-";
 const APP_FILES = [
   "./",
   "./index.html",
-  "./app.js?v=20260920-smooth-drag1",
+  "./app.js?v=20260926-life-ai1",
   "./style.css?v=20260920-smooth-drag1",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
@@ -20,7 +20,13 @@ const APP_FILES = [
   "./catch.mp3",
   "./get.mp3",
   "./escape.mp3",
-  "./bgm-home.mp3"
+  "./bgm-home.mp3",
+  "./bgm-facility-01.mp3",
+  "./bgm-facility-02.mp3",
+  "./bgm-facility-03.mp3",
+  "./bgm-facility-04.mp3",
+  "./bgm-facility-05.mp3",
+  "./bgm-facility-06.mp3"
 ];
 
 self.addEventListener("install", event => {

@@ -261,6 +261,15 @@ let pinchStartScale = 1;
 let isPinchingSticker = false;
 let pretendAutonomyTimer = null;
 let lastPretendInteractionAt = 0;
+let pretendAiCursor = 0;
+
+const pokemonPersonalities = {
+  foodie: { label: "くいしんぼう", icon: "🍎", hunger: 1.25, sleep: 0.9, play: 0.9, social: 0.85, explore: 0.8 },
+  energetic: { label: "げんき", icon: "⚡", hunger: 1, sleep: 0.75, play: 1.3, social: 1, explore: 1.2 },
+  sleepy: { label: "のんびり", icon: "💤", hunger: 0.9, sleep: 1.3, play: 0.8, social: 0.9, explore: 0.65 },
+  friendly: { label: "なかよし", icon: "❤️", hunger: 0.9, sleep: 0.9, play: 1, social: 1.35, explore: 0.9 },
+  curious: { label: "こうきしん", icon: "✨", hunger: 0.9, sleep: 0.85, play: 1.15, social: 1, explore: 1.35 }
+};
 
 const soundFiles = [
   "correct.mp3",
@@ -1299,6 +1308,7 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
     sticker.dataset.reaction = savedState?.reaction || "";
     sticker.dataset.pokeState = savedState?.pokeState || savedState?.reaction || "normal";
     sticker.dataset.facing = savedState?.facing || "1";
+    initializePokemonMind(sticker, savedState);
     sticker.innerHTML = `<img src="${stickerData.content}" onerror="handlePokemonImageError(this, ${Number(stickerData.pokemonId) || 0})" alt="${stickerData.label || "ポケモン"}">`;
   } else {
     sticker.dataset.itemId = stickerData.itemId || stickerData.content;
@@ -1325,6 +1335,76 @@ function createSticker(stickerData, savedState = null, shouldSave = true) {
   if (shouldSave) {
     selectSticker(sticker);
     saveStickerScene();
+  }
+}
+
+function clampPokemonNeed(value) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function getPokemonNeed(sticker, name) {
+  return clampPokemonNeed(sticker?.dataset?.[name]);
+}
+
+function setPokemonNeed(sticker, name, value) {
+  if (!sticker) return;
+  sticker.dataset[name] = clampPokemonNeed(value).toFixed(1);
+}
+
+function initializePokemonMind(sticker, savedState = null) {
+  if (!sticker || sticker.dataset.type !== "pokemon") return;
+  const personalityKeys = Object.keys(pokemonPersonalities);
+  const seed = Number(savedState?.aiSeed)
+    || (Number(sticker.dataset.pokemonId || 1) * 37 + Date.now() + Math.floor(Math.random() * 9973));
+  const personality = savedState?.personality || personalityKeys[Math.abs(seed) % personalityKeys.length];
+  sticker.dataset.aiSeed = String(seed);
+  sticker.dataset.personality = pokemonPersonalities[personality] ? personality : "curious";
+  sticker.dataset.hunger = String(savedState?.hunger ?? (18 + Math.abs(seed % 18)));
+  sticker.dataset.energy = String(savedState?.energy ?? (72 + Math.abs(seed % 22)));
+  sticker.dataset.fun = String(savedState?.fun ?? (62 + Math.abs(seed % 25)));
+  sticker.dataset.social = String(savedState?.social ?? (64 + Math.abs(seed % 24)));
+  sticker.dataset.meals = String(savedState?.meals || 0);
+  sticker.dataset.playCount = String(savedState?.playCount || 0);
+  sticker.dataset.sleepCount = String(savedState?.sleepCount || 0);
+  sticker.dataset.favoriteItem = savedState?.favoriteItem || "";
+  sticker.dataset.lastAiAction = savedState?.lastAiAction || "";
+  sticker.dataset.lastMindUpdate = String(Date.now());
+}
+
+function updatePokemonNeeds(sticker) {
+  if (!sticker || sticker.dataset.type !== "pokemon") return;
+  const now = Date.now();
+  const previous = Number(sticker.dataset.lastMindUpdate || now);
+  const elapsedSeconds = Math.max(0, Math.min(15, (now - previous) / 1000));
+  sticker.dataset.lastMindUpdate = String(now);
+  if (elapsedSeconds <= 0) return;
+
+  const isSleeping = sticker.dataset.pokeState === "sleeping";
+  setPokemonNeed(sticker, "hunger", getPokemonNeed(sticker, "hunger") + elapsedSeconds * 0.2);
+  setPokemonNeed(sticker, "energy", getPokemonNeed(sticker, "energy") + elapsedSeconds * (isSleeping ? 1.35 : -0.11));
+  setPokemonNeed(sticker, "fun", getPokemonNeed(sticker, "fun") - elapsedSeconds * 0.16);
+  setPokemonNeed(sticker, "social", getPokemonNeed(sticker, "social") - elapsedSeconds * 0.08);
+}
+
+function rememberPokemonAction(sticker, action, item = null) {
+  if (!sticker || sticker.dataset.type !== "pokemon") return;
+  sticker.dataset.lastAiAction = action;
+  if (item?.dataset.itemId) sticker.dataset.favoriteItem = item.dataset.itemId;
+
+  if (action === "eat") {
+    setPokemonNeed(sticker, "hunger", 0);
+    setPokemonNeed(sticker, "energy", getPokemonNeed(sticker, "energy") + 8);
+    sticker.dataset.meals = String(Number(sticker.dataset.meals || 0) + 1);
+  } else if (action === "sleep") {
+    setPokemonNeed(sticker, "energy", 100);
+    sticker.dataset.sleepCount = String(Number(sticker.dataset.sleepCount || 0) + 1);
+  } else if (action === "play") {
+    setPokemonNeed(sticker, "fun", 100);
+    setPokemonNeed(sticker, "social", getPokemonNeed(sticker, "social") + 12);
+    sticker.dataset.playCount = String(Number(sticker.dataset.playCount || 0) + 1);
+  } else if (action === "social") {
+    setPokemonNeed(sticker, "social", 100);
+    setPokemonNeed(sticker, "fun", getPokemonNeed(sticker, "fun") + 10);
   }
 }
 
@@ -1515,6 +1595,7 @@ function feedPokemonWithItem(pokemonSticker, foodItem) {
   if (foodItem.dataset.category !== "food") return false;
 
   foodItem.dataset.isBeingEaten = "true";
+  rememberPokemonAction(pokemonSticker, "eat", foodItem);
   foodItem.classList.add("isBeingEaten");
   foodItem.style.pointerEvents = "none";
   applyPokemonReaction(pokemonSticker, "eating", { quiet: true });
@@ -1618,6 +1699,7 @@ function animateToyArc(toyItem, sourcePokemon, action, options = {}) {
     const receiver = findPokemonNearToyLanding(toyItem, sourcePokemon);
     if (receiver && passCount < maxPasses) {
       applyPokemonReaction(receiver, "playing", { quiet: true });
+      rememberPokemonAction(receiver, "play", toyItem);
       receiver.dataset.bubble = action.bubble;
       receiver.classList.add(action.pokemonClass);
       showPretendSparkle(receiver, action.bubble);
@@ -1650,6 +1732,7 @@ function playToyActionWithPokemon(pokemonSticker, toyItem) {
   if (!pokemonSticker || !toyItem || !action || toyItem.dataset.isToyActing === "true") return false;
 
   toyItem.dataset.isToyActing = "true";
+  rememberPokemonAction(pokemonSticker, "play", toyItem);
   applyPokemonReaction(pokemonSticker, "playing", { quiet: true });
   pokemonSticker.dataset.bubble = action.bubble;
   pokemonSticker.classList.add(action.pokemonClass);
@@ -1750,6 +1833,13 @@ function applyPretendInteraction(pokemonSticker, item, reaction) {
     || state === "happy";
 
   if (!matchesNeed) return false;
+
+  if (reaction === "eating") rememberPokemonAction(pokemonSticker, "eat", item);
+  if (reaction === "sleeping") rememberPokemonAction(pokemonSticker, "sleep", item);
+  if (reaction === "playing") rememberPokemonAction(pokemonSticker, "play", item);
+  if (reaction === "sit") {
+    setPokemonNeed(pokemonSticker, "energy", getPokemonNeed(pokemonSticker, "energy") + 12);
+  }
 
   applyPokemonReaction(pokemonSticker, reaction, { keep: reaction === "sleeping" });
   const sparkleMark = reaction === "sleeping" ? "💤" : reaction === "eating" ? "❤️" : reaction === "playing" ? "✨" : reaction === "sit" ? "🪑" : "⭐";
@@ -1934,16 +2024,149 @@ function runPretendAutonomyTick() {
   const pokemonStickers = [...stickerBoard.querySelectorAll(".pokemonSticker")];
   if (pokemonStickers.length === 0) return;
 
-  pokemonStickers.forEach(sticker => {
-    if (isPokemonBusy(sticker)) return;
+  pokemonStickers.forEach(updatePokemonNeeds);
+  const available = pokemonStickers.filter(sticker => !isPokemonBusy(sticker));
+  if (available.length === 0) return;
 
-    const roll = Math.random();
-    if (roll < 0.38) {
-      walkPokemonRandomly(sticker);
-    } else if (roll < 0.66) {
-      showRandomPokemonMood(sticker);
+  pretendAiCursor = (pretendAiCursor + 1) % available.length;
+  const sticker = available[pretendAiCursor];
+  const decision = choosePokemonAiDecision(sticker, pokemonStickers);
+  runPokemonAiDecision(sticker, decision);
+}
+
+function getPokemonPersonality(sticker) {
+  return pokemonPersonalities[sticker?.dataset.personality] || pokemonPersonalities.curious;
+}
+
+function findNearestPokemonFriend(sticker, pokemonStickers) {
+  const others = pokemonStickers.filter(candidate => candidate !== sticker && !isPokemonBusy(candidate));
+  if (others.length === 0) return null;
+  const origin = getStickerPercentPosition(sticker);
+  return others.reduce((nearest, candidate) => {
+    const position = getStickerPercentPosition(candidate);
+    const distance = Math.hypot(position.x - origin.x, position.y - origin.y);
+    return !nearest || distance < nearest.distance ? { sticker: candidate, distance } : nearest;
+  }, null)?.sticker || null;
+}
+
+function getFavoriteTargetBonus(sticker, target) {
+  return target && target.dataset.itemId === sticker.dataset.favoriteItem ? 10 : 0;
+}
+
+function choosePokemonAiDecision(sticker, pokemonStickers) {
+  const personality = getPokemonPersonality(sticker);
+  const food = findNearestItemForNeed(sticker, "hungry");
+  const bed = findNearestItemForNeed(sticker, "sleepy");
+  const toy = findNearestItemForNeed(sticker, "playing");
+  const friend = findNearestPokemonFriend(sticker, pokemonStickers);
+  const hunger = getPokemonNeed(sticker, "hunger");
+  const tiredness = 100 - getPokemonNeed(sticker, "energy");
+  const boredom = 100 - getPokemonNeed(sticker, "fun");
+  const loneliness = 100 - getPokemonNeed(sticker, "social");
+  const previousAction = sticker.dataset.lastAiAction || "";
+  const repeatPenalty = action => previousAction === action ? 8 : 0;
+
+  const choices = [
+    { action: "eat", needState: "hungry", target: food, bubble: "🍔", score: hunger * personality.hunger + (food ? 18 : -32) + getFavoriteTargetBonus(sticker, food) - repeatPenalty("eat") },
+    { action: "sleep", needState: "sleepy", target: bed, bubble: "💤", score: tiredness * personality.sleep + (bed ? 18 : -32) + getFavoriteTargetBonus(sticker, bed) - repeatPenalty("sleep") },
+    { action: "play", needState: "playing", target: toy, bubble: "🎾", score: boredom * personality.play + (toy ? 16 : -24) + getFavoriteTargetBonus(sticker, toy) - repeatPenalty("play") },
+    { action: "social", target: friend, bubble: "❤️", score: loneliness * personality.social + (friend ? 12 : -45) - repeatPenalty("social") },
+    { action: "explore", target: null, bubble: personality.icon, score: 20 * personality.explore + Math.random() * 18 }
+  ];
+  choices.forEach(choice => { choice.score += Math.random() * 6; });
+  return choices.sort((a, b) => b.score - a.score)[0];
+}
+
+function runPokemonAiDecision(sticker, decision) {
+  if (!sticker || !decision || isPokemonBusy(sticker)) return;
+  if (decision.action === "social" && decision.target && decision.score >= 42) {
+    movePokemonTowardFriend(sticker, decision.target);
+    return;
+  }
+  if (decision.target && decision.needState && decision.score >= 42) {
+    applyPokemonReaction(sticker, decision.needState, { quiet: true, keep: true });
+    sticker.dataset.bubble = decision.bubble;
+    lookAtNeedTarget(sticker, decision.needState);
+    movePokemonTowardNeed(sticker, decision.target, decision.action);
+    return;
+  }
+
+  sticker.dataset.lastAiAction = "explore";
+  if (Math.random() < 0.72) {
+    walkPokemonRandomly(sticker);
+  } else {
+    const personality = getPokemonPersonality(sticker);
+    sticker.dataset.bubble = personality.icon;
+    applyPokemonReaction(sticker, "happy", { quiet: true });
+  }
+}
+
+function movePokemonTowardNeed(sticker, target, action) {
+  if (!sticker?.isConnected || !target?.isConnected) return false;
+  const current = getStickerPercentPosition(sticker);
+  const destination = getStickerPercentPosition(target);
+  const dx = destination.x - current.x;
+  const dy = destination.y - current.y;
+  const distance = Math.max(0.01, Math.hypot(dx, dy));
+  const step = Math.min(distance, 11);
+  const nextX = current.x + dx / distance * step;
+  const nextY = current.y + dy / distance * step;
+
+  sticker.dataset.facing = dx >= 0 ? "1" : "-1";
+  sticker.dataset.lastAiAction = action;
+  sticker.classList.add("isWalking");
+  pausePokemonAutonomy(sticker, 2700);
+  updateStickerTransform(sticker);
+  setStickerPercentPosition(sticker, nextX, nextY);
+  showLightArtEffectAtSticker(sticker, "step");
+
+  window.setTimeout(() => {
+    if (!sticker.isConnected) return;
+    sticker.classList.remove("isWalking", "isLooking");
+    sticker.dataset.lookTilt = "0";
+    updateStickerTransform(sticker);
+    if (target.isConnected) {
+      const from = getStickerPercentPosition(sticker);
+      const to = getStickerPercentPosition(target);
+      if (Math.hypot(to.x - from.x, to.y - from.y) <= 12.5) {
+        applyPretendInteraction(sticker, target, getItemReaction(target));
+      }
     }
-  });
+    saveStickerScene();
+  }, 2400);
+  return true;
+}
+
+function movePokemonTowardFriend(sticker, friend) {
+  if (!sticker?.isConnected || !friend?.isConnected) return false;
+  const current = getStickerPercentPosition(sticker);
+  const destination = getStickerPercentPosition(friend);
+  const dx = destination.x - current.x;
+  const dy = destination.y - current.y;
+  const distance = Math.max(0.01, Math.hypot(dx, dy));
+  const step = Math.min(Math.max(0, distance - 7), 10);
+
+  sticker.dataset.facing = dx >= 0 ? "1" : "-1";
+  sticker.dataset.bubble = "❤️";
+  sticker.dataset.lastAiAction = "social";
+  sticker.classList.add("isWalking");
+  pausePokemonAutonomy(sticker, 3200);
+  setStickerPercentPosition(sticker, current.x + dx / distance * step, current.y + dy / distance * step);
+
+  window.setTimeout(() => {
+    if (!sticker.isConnected || !friend.isConnected) return;
+    sticker.classList.remove("isWalking");
+    applyPokemonReaction(sticker, "happy", { quiet: true });
+    applyPokemonReaction(friend, "happy", { quiet: true });
+    sticker.dataset.bubble = "❤️";
+    friend.dataset.bubble = "❤️";
+    rememberPokemonAction(sticker, "social");
+    rememberPokemonAction(friend, "social");
+    showPretendSparkle(sticker, "💕");
+    showPretendSparkle(friend, "💕");
+    saveStickerScene();
+  }, 2400);
+  return true;
 }
 
 function walkPokemonRandomly(sticker) {
@@ -1986,6 +2209,8 @@ function findNearestItemForNeed(sticker, needState) {
   let nearestDistance = Infinity;
   stickerBoard.querySelectorAll(".itemSticker").forEach(item => {
     if (getItemReaction(item) !== wantedReaction) return;
+    if (wantedReaction === "eating" && item.dataset.isBeingEaten === "true") return;
+    if (wantedReaction === "playing" && item.dataset.isToyActing === "true") return;
     const distance = getDistance(center, getStickerCenter(item));
     if (distance < nearestDistance) {
       nearest = item;
@@ -2163,7 +2388,18 @@ function saveStickerScene() {
       rotation: Number(sticker.dataset.rotation || 0),
       reaction: sticker.dataset.reaction || "",
       pokeState: sticker.dataset.pokeState || "normal",
-      facing: sticker.dataset.facing || "1"
+      facing: sticker.dataset.facing || "1",
+      aiSeed: Number(sticker.dataset.aiSeed || 0),
+      personality: sticker.dataset.personality || "",
+      hunger: getPokemonNeed(sticker, "hunger"),
+      energy: getPokemonNeed(sticker, "energy"),
+      fun: getPokemonNeed(sticker, "fun"),
+      social: getPokemonNeed(sticker, "social"),
+      meals: Number(sticker.dataset.meals || 0),
+      playCount: Number(sticker.dataset.playCount || 0),
+      sleepCount: Number(sticker.dataset.sleepCount || 0),
+      favoriteItem: sticker.dataset.favoriteItem || "",
+      lastAiAction: sticker.dataset.lastAiAction || ""
     };
   });
 
